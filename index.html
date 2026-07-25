@@ -99,6 +99,14 @@
   .toast{position:fixed;top:32%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(90,30,60,.9);color:#fff;padding:18px 28px;border-radius:18px;font-size:22px;font-weight:900;transition:transform .18s;z-index:40;text-align:center;max-width:82%;}
   .toast.show{transform:translate(-50%,-50%) scale(1);}
   @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+  .pdiff{display:flex;gap:8px;justify-content:center;margin:8px 0 12px;}
+  .pdiff button{background:#ffd6e7;color:#c94f86;border:none;border-radius:12px;padding:10px 12px;font-weight:900;font-size:14px;cursor:pointer;}
+  .pdiff button.on{background:#ff8fb8;color:#fff;}
+  .pgrid{display:grid;gap:6px;margin:0 auto;background:#ffe6f0;padding:8px;border-radius:14px;}
+  .ptile{background:linear-gradient(160deg,#ff9ec4,#ff7fb0);color:#fff;font-weight:900;border:none;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 0 #e06a97;}
+  .ptile:active{transform:translateY(2px);box-shadow:0 1px 0 #e06a97;}
+  .ptile.empty{background:transparent;box-shadow:none;pointer-events:none;}
+  .pmsg{text-align:center;font-size:13px;color:#c98ba9;font-weight:700;margin-top:8px;}
 </style>
 </head>
 <body>
@@ -116,6 +124,7 @@
     <div class="hud">
       <div class="coin">🪙 <span id="coins">0</span></div>
       <div class="who"><span id="who">Kitty 樂園</span></div>
+      <button class="wbtn" onclick="openPuzzle()">🧩 拼圖</button>
       <button class="wbtn" onclick="openShop()">🛒 商店</button>
       <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
     </div>
@@ -153,6 +162,13 @@
     <div class="doll" id="dollPreview" style="margin:0 auto 6px"></div>
     <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;text-align:center">點一下換上（再點一下脫掉）→ 娃娃立刻穿上。灰的還沒收集到，去做料理／開寶箱/商店拿 🎁</p>
     <div id="wardBody"></div>
+  </div></div>
+
+  <!-- 拼圖小遊戲 -->
+  <div class="sheetwrap hidden" id="puzzWrap"><div class="sheet">
+    <div class="grab"></div>
+    <div class="lhead"><div class="ltitle">🧩 拼圖遊戲</div><button class="close" onclick="closeSheet('puzzWrap')">✕</button></div>
+    <div id="puzzBody"></div>
   </div></div>
 
   <div class="toast" id="toast"></div>
@@ -384,6 +400,48 @@ function openWard(){
     body.appendChild(head); body.appendChild(g);
   });
   openSheet("wardWrap");
+}
+
+/* ====== 拼圖小遊戲：2×2(簡單) / 3×3(中) / 4×4(難)，滑動排回 1→N ====== */
+let pz={n:3,tiles:[],empty:0};
+function openPuzzle(){
+  document.getElementById("puzzBody").innerHTML=`
+    <p style="text-align:center;font-size:13px;color:#c98ba9;font-weight:700;margin-bottom:4px">選難度 → 點數字滑到空格，排回 1→N。越難賺越多 🪙</p>
+    <div class="pdiff">
+      <button onclick="startPuzzle(2)">簡單 2×2 · 🪙10</button>
+      <button onclick="startPuzzle(3)">中等 3×3 · 🪙25</button>
+      <button onclick="startPuzzle(4)">困難 4×4 · 🪙50</button>
+    </div>
+    <div id="pgridWrap"></div>
+    <div class="pmsg" id="pmsg">選一個難度開始 🧩</div>`;
+  openSheet("puzzWrap");
+}
+function pNeighbors(idx,n){ const r=Math.floor(idx/n),c=idx%n,o=[]; if(r>0)o.push(idx-n); if(r<n-1)o.push(idx+n); if(c>0)o.push(idx-1); if(c<n-1)o.push(idx+1); return o; }
+function startPuzzle(n){
+  pz.n=n; const t=[]; for(let i=1;i<n*n;i++)t.push(i); t.push(0); pz.tiles=t; pz.empty=n*n-1;
+  let guard=0;
+  do{ for(let k=0;k<n*n*25;k++){ const nb=pNeighbors(pz.empty,n); pSlide(nb[Math.floor(Math.random()*nb.length)],true); } }while(pSolved()&&guard++<5);
+  renderPuzzle();
+  document.getElementById("pmsg").textContent="加油！排回 1→"+(n*n-1);
+}
+function pSlide(idx,silent){
+  if(!pNeighbors(pz.empty,pz.n).includes(idx)) return;
+  pz.tiles[pz.empty]=pz.tiles[idx]; pz.tiles[idx]=0; pz.empty=idx;
+  if(!silent){ if(pSolved()){ renderPuzzle(); puzzleWin(); } else renderPuzzle(); }
+}
+function pSolved(){ for(let i=0;i<pz.n*pz.n-1;i++) if(pz.tiles[i]!==i+1) return false; return true; }
+function renderPuzzle(){
+  const n=pz.n, size=Math.min(304, 72*n);
+  const wrap=document.getElementById("pgridWrap");
+  wrap.innerHTML=`<div class="pgrid" style="grid-template-columns:repeat(${n},1fr);width:${size}px;height:${size}px"></div>`;
+  const g=wrap.firstChild;
+  pz.tiles.forEach((v,i)=>{ const b=document.createElement("button"); b.className="ptile"+(v===0?" empty":"");
+    b.textContent=v===0?"":v; b.style.fontSize=(n<=2?34:n===3?26:20)+"px";
+    if(v!==0) b.onclick=()=>pSlide(i,false); g.appendChild(b); });
+}
+function puzzleWin(){
+  const reward=pz.n===2?10:pz.n===3?25:50; S.coins+=reward; save(); render();
+  document.getElementById("pmsg").textContent="🎉 拼好了！🪙+"+reward; toast("拼圖完成！🪙+"+reward);
 }
 
 function openSheet(id){ document.getElementById(id).classList.remove("hidden"); }
