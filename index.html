@@ -44,11 +44,26 @@
   .chest.opened{opacity:.4;}
   /* Hello Kitty 玩家 */
   .kitty{position:absolute;transform:translate(-50%,-100%);z-index:5;transition:left .6s ease,top .6s ease;text-align:center;pointer-events:none;}
-  .kitty .body{position:relative;width:76px;height:76px;}
-  .kitty .face{font-size:60px;line-height:1;}
-  .kitty .hair{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:26px;}
-  .kitty .dress{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:26px;}
-  .kitty .ksh{width:44px;height:10px;margin:0 auto;background:rgba(60,110,60,.22);border-radius:50%;filter:blur(2px);}
+  .kitty .ksh{width:44px;height:10px;margin:2px auto 0;background:rgba(60,110,60,.22);border-radius:50%;filter:blur(2px);}
+  /* ===== 紙娃娃：白身體+貓頭，衣服一層層平面套上去（可換成平面PNG） ===== */
+  .doll{position:relative;width:130px;height:190px;margin:0 auto;}
+  .doll .dbody{position:absolute;top:56px;left:50%;transform:translateX(-50%);width:62px;height:74px;background:#fff;border:2px solid #f2cad9;border-radius:26px 26px 14px 14px;}
+  .doll .dlegL,.doll .dlegR{position:absolute;top:126px;width:20px;height:50px;background:#fff;border:2px solid #f2cad9;border-radius:10px 10px 12px 12px;}
+  .doll .dlegL{left:41px} .doll .dlegR{right:41px}
+  .doll .dhead{position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-size:58px;line-height:1;}
+  .doll .dl{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;line-height:1;}
+  .doll .dl img{object-fit:contain;}
+  .doll .p-head{top:-10px;font-size:24px;}
+  .doll .p-head2{top:4px;left:64%;font-size:22px;}
+  .doll .p-face{top:24px;font-size:22px;}
+  .doll .p-neck{top:48px;font-size:18px;}
+  .doll .p-torso{top:58px;font-size:40px;} .doll .p-torso img{max-width:66px;max-height:80px;}
+  .doll .p-torso2{top:54px;font-size:46px;} .doll .p-torso2 img{max-width:72px;max-height:88px;}
+  .doll .p-legs{top:122px;font-size:34px;} .doll .p-legs img{max-width:60px;max-height:60px;}
+  .doll .p-feet{top:170px;font-size:22px;}
+  .doll .p-wrist{top:96px;left:74%;font-size:16px;}
+  .doll .p-side{top:84px;left:22%;font-size:24px;}
+  .kitty .dollmini{transform:scale(.52);transform-origin:bottom center;}
 
   /* bottom sheet */
   .sheetwrap{position:absolute;inset:0;background:rgba(90,40,70,.35);display:flex;align-items:flex-end;z-index:20;}
@@ -110,11 +125,7 @@
       <div class="sun"></div>
       <!-- props / npcs / chest / kitty 由 JS 佈置 -->
       <div class="kitty" id="kitty" style="left:50%;top:78%;">
-        <div class="body">
-          <div class="hair" id="kHair"></div>
-          <div class="face">🐱</div>
-          <div class="dress" id="kDress"></div>
-        </div>
+        <div class="doll dollmini" id="kittyDoll"></div>
         <div class="ksh"></div>
       </div>
     </div>
@@ -139,7 +150,8 @@
   <div class="sheetwrap hidden" id="wardWrap"><div class="sheet">
     <div class="grab"></div>
     <div class="lhead"><div class="ltitle">👗 Kitty 的衣櫃</div><button class="close" onclick="closeSheet('wardWrap')">✕</button></div>
-    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">點一下換上（再點一下脫掉）。灰的是還沒收集到的，去做料理／開寶箱拿 🎁</p>
+    <div class="doll" id="dollPreview" style="margin:0 auto 6px"></div>
+    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;text-align:center">點一下換上（再點一下脫掉）→ 娃娃立刻穿上。灰的還沒收集到，去做料理／開寶箱/商店拿 🎁</p>
     <div id="wardBody"></div>
   </div></div>
 
@@ -148,12 +160,18 @@
 
 <script src="data/vocab.js"></script>
 <script>
-/* ====== 收集品：上衣/褲子/髮圈/髮夾 各10種（可換裝收集） ====== */
+/* ====== 收集品：10 個部位 × 每部位10件（共100件）；pos=紙娃娃上的位置 ====== */
 const CATDEFS = [
-  {type:"top",   label:"👕 上衣", list:[["👕","粉T恤"],["👚","甜心上衣"],["👔","小襯衫"],["🧥","毛呢外套"],["🎽","運動背心"],["🦺","蓬蓬上衣"],["👘","和風上衣"],["🥼","罩衫"],["🧶","針織衣"],["🌈","彩虹上衣"]]},
-  {type:"bottom",label:"👖 褲子", list:[["👖","牛仔褲"],["🩳","短褲"],["👗","傘裙"],["🩰","澎澎裙"],["🧵","吊帶褲"],["🎀","蝴蝶結裙"],["🟦","藍長褲"],["🟪","紫短裙"],["🟩","綠色褲"],["🌸","花朵裙"]]},
-  {type:"band",  label:"🎀 髮圈", list:[["🎀","蝴蝶結圈"],["⭐","星星圈"],["🌸","花朵圈"],["🍓","草莓圈"],["💛","愛心圈"],["👑","皇冠圈"],["🌈","彩虹圈"],["🩷","粉嫩圈"],["💎","鑽石圈"],["🐰","兔耳圈"]]},
-  {type:"clip",  label:"📎 髮夾", list:[["🎗️","緞帶夾"],["✨","閃亮夾"],["🌷","鬱金香夾"],["🍒","櫻桃夾"],["💧","水滴夾"],["🌙","月亮夾"],["🦋","蝴蝶夾"],["🍀","幸運夾"],["💠","寶石夾"],["🌼","雛菊夾"]]}
+  {type:"band",    label:"🎀 髮圈", pos:"head",  list:[["🎀","蝴蝶結圈"],["⭐","星星圈"],["🌸","花朵圈"],["🍓","草莓圈"],["💛","愛心圈"],["👑","皇冠圈"],["🌈","彩虹圈"],["🩷","粉嫩圈"],["💎","鑽石圈"],["🐰","兔耳圈"]]},
+  {type:"clip",    label:"📎 髮夾", pos:"head2", list:[["🎗️","緞帶夾"],["✨","閃亮夾"],["🌷","鬱金香夾"],["🍒","櫻桃夾"],["💧","水滴夾"],["🌙","月亮夾"],["🦋","蝴蝶夾"],["🍀","幸運夾"],["💠","寶石夾"],["🌼","雛菊夾"]]},
+  {type:"glasses", label:"👓 眼鏡", pos:"face",  list:[["👓","圓框眼鏡"],["🕶️","太陽眼鏡"],["👓","方框眼鏡"],["👓","愛心框"],["👓","星星框"],["🕶️","貓眼鏡"],["👓","粉框"],["👓","藍框"],["👓","金框"],["🕶️","彩框"]]},
+  {type:"necklace",label:"📿 項鏈", pos:"neck",  list:[["📿","珍珠項鏈"],["💛","愛心墜"],["⭐","星星墜"],["🎀","蝴蝶結鏈"],["💎","鑽石項鏈"],["🥇","金鏈"],["🔗","銀鏈"],["💠","寶石鏈"],["🔔","鈴鐺鏈"],["🍀","幸運草鏈"]]},
+  {type:"top",     label:"👕 上衣", pos:"torso", list:[["👕","粉T恤"],["👚","甜心上衣"],["👔","小襯衫"],["🎽","運動背心"],["🦺","蓬蓬上衣"],["👘","和風上衣"],["🧶","針織衣"],["🩱","連身衣"],["💗","愛心衣"],["🌈","彩虹上衣"]]},
+  {type:"coat",    label:"🧥 外套(法式配飾)", pos:"torso2", list:[["🧥","毛呢外套"],["🧥","風衣"],["👘","法式披肩"],["🥼","罩衫"],["🧥","牛仔外套"],["🧣","斗篷"],["🧥","羽絨外套"],["👔","西裝外套"],["🧶","毛衣外套"],["🌂","雨衣"]]},
+  {type:"bottom",  label:"👖 褲裙", pos:"legs",  list:[["👖","牛仔褲"],["🩳","短褲"],["👗","傘裙"],["🩰","澎澎裙"],["🧵","吊帶褲"],["🎀","百褶裙"],["🟦","長裙"],["🟪","格子裙"],["🟩","皮裙"],["🌸","花裙"]]},
+  {type:"shoes",   label:"👟 鞋子", pos:"feet",  list:[["👟","運動鞋"],["👞","皮鞋"],["👠","高跟鞋"],["👡","涼鞋"],["👢","靴子"],["🩰","芭蕾鞋"],["👟","帆布鞋"],["🥾","登山鞋"],["🩴","拖鞋"],["👟","樂福鞋"]]},
+  {type:"watch",   label:"⌚ 手錶", pos:"wrist", list:[["⌚","粉錶"],["⌚","金錶"],["⌚","銀錶"],["💛","愛心錶"],["⭐","星星錶"],["⌚","運動錶"],["⌚","方錶"],["⌚","圓錶"],["🐱","卡通錶"],["💎","寶石錶"]]},
+  {type:"bag",     label:"👜 包包", pos:"side",  list:[["👜","手提包"],["👝","肩背包"],["🎒","後背包"],["🪣","水桶包"],["⛓️","鏈條包"],["👜","托特包"],["👝","斜背包"],["🧳","行李包"],["🧺","草編包"],["👛","晚宴包"]]}
 ];
 const ITEMS = [];
 CATDEFS.forEach(c => c.list.forEach((it,i)=> ITEMS.push({id:c.type+(i+1), type:c.type, ic:it[0], name:it[1]})));
@@ -193,7 +211,9 @@ function migrate(s){ s=s||{};
   if(typeof s.name!=="string") s.name="小公主";
   if(typeof s.coins!=="number") s.coins=0;
   if(!Array.isArray(s.wardrobe)) s.wardrobe=[];
-  if(!s.equip || ('hair' in s.equip)) s.equip={top:null,bottom:null,band:null,clip:null};  // 升級成4欄位
+  if(!s.equip || typeof s.equip!=="object") s.equip={};
+  CATDEFS.forEach(c=>{ if(!(c.type in s.equip)) s.equip[c.type]=null; });   // 10 個部位欄位
+  delete s.equip.hair; delete s.equip.dress;                               // 清掉舊欄位
   if(!Array.isArray(s.chests)) s.chests=[];
   return s;
 }
@@ -207,12 +227,19 @@ function start(){
   if(chestTimer) clearInterval(chestTimer); chestTimer=setInterval(spawnChest, 60000);  // 每 1 分鐘出現寶箱
 }
 let words=[];
-function eqIc(t){ const id=S.equip[t]; if(!id) return ""; const it=ITEMS.find(i=>i.id===id); return it?it.ic:""; }
+/* 紙娃娃：白身體+貓頭 + 各部位一層層套上（有平面PNG就用，否則emoji） */
+function dollLayerHTML(cat){
+  const id=S.equip[cat.type]; if(!id) return ""; const it=ITEMS.find(i=>i.id===id); if(!it) return "";
+  return `<div class="dl p-${cat.pos}"><img src="assets/clothes/${it.id}.png" alt="" onerror="this.parentNode.textContent='${it.ic}'"></div>`;
+}
+function buildDoll(el){
+  if(!el) return;
+  el.innerHTML = `<div class="dbody"></div><div class="dlegL"></div><div class="dlegR"></div><div class="dhead">🐱</div>` + CATDEFS.map(dollLayerHTML).join("");
+}
 function render(){
   document.getElementById("coins").textContent=S.coins;
   document.getElementById("who").textContent=S.name+" 的樂園";
-  document.getElementById("kHair").textContent = eqIc("band")+eqIc("clip");   // 髮圈+髮夾在頭上
-  document.getElementById("kDress").textContent = eqIc("top")+eqIc("bottom"); // 上衣+褲子在身上
+  buildDoll(document.getElementById("kittyDoll"));
 }
 function buildLand(){
   const land=document.getElementById("land");
@@ -302,8 +329,10 @@ function openChest(c){
   else { const c2=15+Math.floor(Math.random()*15); S.coins+=c2; save(); buildLand(); render(); toast("打開寶箱！🪙+"+c2); }
 }
 
-/* ====== 商店：用金幣買衣服髮飾 ====== */
-function itemCost(it){ return (it.type==="top"||it.type==="bottom")?30:20; }
+/* ====== 商店：買衣服髮飾；已擁有的可「賣回」變金幣 ====== */
+const CLOTHING=["top","coat","bottom","shoes"];
+function itemCost(it){ return CLOTHING.includes(it.type)?30:20; }
+function sellPrice(it){ return itemCost(it); }   // 賣回＝原價（買賣不虧、只是換回金幣）
 function openShop(){
   document.getElementById("shopCoins").textContent=S.coins;
   const body=document.getElementById("shopBody"); body.innerHTML="";
@@ -311,10 +340,10 @@ function openShop(){
     const head=document.createElement("div"); head.className="wcat"; head.textContent=cat.label;
     const g=document.createElement("div"); g.className="wardgrid";
     ITEMS.filter(i=>i.type===cat.type).forEach(it=>{
-      const own=S.wardrobe.includes(it.id); const cost=itemCost(it);
+      const own=S.wardrobe.includes(it.id);
       const d=document.createElement("div"); d.className="witem"+(own?" owned":"");
-      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${it.name}</div><div class="wprice">${own?"✓ 已有":("🪙 "+cost)}</div>`;
-      if(!own) d.onclick=()=>buyItem(it);
+      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${it.name}</div><div class="wprice">${own?("賣 🪙"+sellPrice(it)):("🪙 "+itemCost(it))}</div>`;
+      d.onclick=()=> own? sellItem(it) : buyItem(it);
       g.appendChild(d);
     });
     body.appendChild(head); body.appendChild(g);
@@ -328,9 +357,18 @@ function buyItem(it){
   S.coins-=cost; S.wardrobe.push(it.id); save(); render(); openShop();
   toast("買到 "+it.ic+it.name+" 🎉");
 }
+function sellItem(it){
+  if(!S.wardrobe.includes(it.id)) return;
+  if(!confirm("要把「"+it.name+"」賣掉換 🪙"+sellPrice(it)+" 嗎？")) return;
+  S.wardrobe=S.wardrobe.filter(x=>x!==it.id);
+  if(S.equip[it.type]===it.id) S.equip[it.type]=null;   // 賣掉就脫下
+  S.coins+=sellPrice(it); save(); render(); openShop();
+  toast("賣掉 "+it.ic+it.name+"，🪙+"+sellPrice(it));
+}
 
 /* ====== 衣櫃換裝：上衣/褲子/髮圈/髮夾 各10種 ====== */
 function openWard(){
+  buildDoll(document.getElementById("dollPreview"));
   const body=document.getElementById("wardBody"); body.innerHTML="";
   CATDEFS.forEach(cat=>{
     const owned=ITEMS.filter(i=>i.type===cat.type&&S.wardrobe.includes(i.id)).length;
