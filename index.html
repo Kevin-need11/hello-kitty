@@ -277,7 +277,7 @@ function rewardTask(){
 /* ====== 藏寶箱：每 1 分鐘在樂園某處出現一個，走過去開 ====== */
 let liveChests=[], chestSeq=0, chestTimer=null;
 function spawnChest(){
-  if(liveChests.length>=3) return;   // 最多同時 3 個，別洗版
+  if(liveChests.length>=5) return;   // 最多同時 5 個
   liveChests.push({id:"lc"+(++chestSeq), x:12+Math.floor(Math.random()*76), y:52+Math.floor(Math.random()*36)});
   buildLand(); toast("叮咚～樂園某處出現寶箱了 ✨");
 }
