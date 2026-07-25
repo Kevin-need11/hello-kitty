@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kitty樂園">
+<meta name="theme-color" content="#ffd6e7">
+<title>Hello Kitty 樂園 · 學英文換裝闖關</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;font-family:"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;}
+  html,body{height:100%;}
+  body{background:#ffe6f0;color:#7a3a55;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .app{width:100%;max-width:520px;height:100%;max-height:940px;display:flex;flex-direction:column;position:relative;overflow:hidden;}
+  .hidden{display:none!important;}
+  .btn{background:#ff8fb8;color:#fff;font-weight:900;border:none;border-radius:16px;padding:15px;font-size:21px;cursor:pointer;box-shadow:0 6px 0 #e06a97;transition:.05s;width:100%;}
+  .btn:active{transform:translateY(4px);box-shadow:0 2px 0 #e06a97;}
+
+  /* login */
+  #login{margin:auto;text-align:center;padding:26px;}
+  #login .logo{font-size:88px;margin-bottom:6px;}
+  #login h1{font-size:30px;font-weight:900;margin-bottom:8px;color:#e0568e;}
+  #login p{font-size:15px;opacity:.85;margin-bottom:24px;}
+  #login input{width:100%;font-size:22px;padding:14px 18px;border:none;border-radius:16px;text-align:center;color:#7a3a55;font-weight:700;margin-bottom:14px;box-shadow:0 3px 10px rgba(224,86,142,.18);}
+
+  #game{height:100%;display:flex;flex-direction:column;}
+  .hud{display:flex;align-items:center;gap:8px;padding:12px 14px 6px;}
+  .hud .coin{background:#fff;border-radius:999px;padding:6px 14px;font-weight:900;font-size:16px;color:#e0568e;box-shadow:0 2px 8px rgba(224,86,142,.15);}
+  .hud .who{flex:1;text-align:center;font-weight:900;font-size:15px;color:#c94f86;}
+  .hud .wbtn{background:#fff;border:none;border-radius:999px;padding:7px 13px;font-size:14px;font-weight:900;color:#e0568e;cursor:pointer;box-shadow:0 2px 8px rgba(224,86,142,.15);}
+  .hint{text-align:center;font-size:12px;color:#c98ba9;font-weight:700;padding:0 14px 4px;}
+
+  /* 陸地地圖 */
+  .land{flex:1;margin:6px 14px;border-radius:26px;position:relative;overflow:hidden;
+    background:linear-gradient(180deg,#bfe9ff 0%,#dff5ff 40%,#cdeeb0 55%,#a9e08c 100%);
+    box-shadow:inset 0 2px 0 #fff,0 6px 18px rgba(224,120,160,.2);cursor:pointer;}
+  .land .sun{position:absolute;top:16px;right:20px;width:42px;height:42px;border-radius:50%;background:radial-gradient(circle,#fff3b0,#ffd54a);box-shadow:0 0 24px #ffe58a;}
+  .prop{position:absolute;font-size:44px;transform:translate(-50%,-50%);filter:drop-shadow(0 3px 3px rgba(60,90,60,.2));pointer-events:none;}
+  .npc{position:absolute;transform:translate(-50%,-50%);text-align:center;cursor:pointer;z-index:3;}
+  .npc .ni{font-size:52px;line-height:1;animation:bob 2.6s ease-in-out infinite;filter:drop-shadow(0 5px 4px rgba(120,60,90,.25));}
+  .npc .nn{font-size:11px;font-weight:900;color:#a34b76;background:rgba(255,255,255,.8);border-radius:999px;padding:1px 7px;margin-top:2px;}
+  .npc .bubble{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:16px;}
+  .chest{position:absolute;transform:translate(-50%,-50%);font-size:34px;cursor:pointer;z-index:2;filter:drop-shadow(0 3px 3px rgba(60,60,20,.3));}
+  .chest.opened{opacity:.4;}
+  /* Hello Kitty 玩家 */
+  .kitty{position:absolute;transform:translate(-50%,-100%);z-index:5;transition:left .6s ease,top .6s ease;text-align:center;pointer-events:none;}
+  .kitty .body{position:relative;width:76px;height:76px;}
+  .kitty .face{font-size:60px;line-height:1;}
+  .kitty .hair{position:absolute;top:-6px;left:50%;transform:translateX(-50%);font-size:26px;}
+  .kitty .dress{position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);font-size:26px;}
+  .kitty .ksh{width:44px;height:10px;margin:0 auto;background:rgba(60,110,60,.22);border-radius:50%;filter:blur(2px);}
+
+  /* bottom sheet */
+  .sheetwrap{position:absolute;inset:0;background:rgba(90,40,70,.35);display:flex;align-items:flex-end;z-index:20;}
+  .sheet{background:#fff;width:100%;max-height:86%;border-radius:24px 24px 0 0;padding:12px 16px 18px;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(120,60,90,.25);animation:up .25s ease;overflow:auto;}
+  @keyframes up{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .grab{width:44px;height:5px;background:#f0d5e2;border-radius:999px;margin:2px auto 10px;flex:none;}
+  .lhead{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+  .ltitle{font-weight:900;font-size:17px;flex:1;color:#c94f86;}
+  .close{background:#ffe6f0;border:none;border-radius:999px;width:34px;height:34px;font-size:18px;cursor:pointer;color:#c94f86;}
+  .ask{font-size:14px;color:#c98ba9;text-align:center;font-weight:700;}
+  .zh{font-size:40px;font-weight:900;text-align:center;margin:6px 0 2px;color:#a34b76;}
+  .speak{display:block;margin:2px auto 12px;background:#ffe6f0;color:#e0568e;border:none;border-radius:999px;padding:8px 18px;font-size:15px;font-weight:800;cursor:pointer;}
+  .opts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px;}
+  .opt{background:#fff5fa;color:#7a3a55;border:2px solid #ffd6e7;border-radius:14px;padding:18px 6px;font-size:22px;font-weight:900;cursor:pointer;}
+  .opt:active{transform:scale(.97);}
+  .opt.right{background:#5ccf8a;border-color:#3bb56e;color:#fff;}
+  .opt.wrong{background:#ff6b8a;border-color:#e6476b;color:#fff;}
+
+  /* 衣櫃 */
+  .wardgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .witem{border:2px solid #ffe0ec;border-radius:14px;padding:12px 4px;text-align:center;cursor:pointer;background:#fff8fb;}
+  .witem.locked{opacity:.4;}
+  .witem.on{border-color:#ff8fb8;background:#ffe6f0;}
+  .witem .wi{font-size:34px;} .witem .wn{font-size:11px;font-weight:800;color:#a34b76;margin-top:3px;}
+
+  .toast{position:fixed;top:32%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(90,30,60,.9);color:#fff;padding:18px 28px;border-radius:18px;font-size:22px;font-weight:900;transition:transform .18s;z-index:40;text-align:center;max-width:82%;}
+  .toast.show{transform:translate(-50%,-50%) scale(1);}
+  @keyframes bob{0%,100%{transform:translateY(0);}50%{transform:translateY(-10px);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <div id="login">
+    <div class="logo">🎀</div>
+    <h1>Hello Kitty 樂園</h1>
+    <p>在樂園裡走走、找寶箱、幫朋友答題，收集可愛衣服髮飾！</p>
+    <input id="nameInput" maxlength="8" placeholder="輸入你的名字">
+    <button class="btn" onclick="start()">進入樂園 →</button>
+  </div>
+
+  <div id="game" class="hidden">
+    <div class="hud">
+      <div class="coin">🪙 <span id="coins">0</span></div>
+      <div class="who"><span id="who">Kitty 樂園</span></div>
+      <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
+    </div>
+    <div class="hint">點地面讓 Kitty 走過去 · 點朋友接任務 · 找找看藏起來的寶箱 🎁</div>
+
+    <div class="land" id="land" onclick="landTap(event)">
+      <div class="sun"></div>
+      <!-- props / npcs / chest / kitty 由 JS 佈置 -->
+      <div class="kitty" id="kitty" style="left:50%;top:78%;">
+        <div class="body">
+          <div class="hair" id="kHair"></div>
+          <div class="face">🐱</div>
+          <div class="dress" id="kDress"></div>
+        </div>
+        <div class="ksh"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 任務答題 -->
+  <div class="sheetwrap hidden" id="taskWrap"><div class="sheet">
+    <div class="grab"></div>
+    <div class="lhead"><div class="ltitle" id="taskTitle">🐰 美樂蒂的題目</div><button class="close" onclick="closeSheet('taskWrap')">✕</button></div>
+    <div class="ask">這個中文，英文是哪一個？答對有獎勵！</div>
+    <div class="zh" id="taskZh">蘋果</div>
+    <button class="speak" onclick="speak(taskCur.en)">🔊 唸唸看</button>
+    <div class="opts" id="taskOpts"></div>
+  </div></div>
+
+  <!-- 衣櫃換裝 -->
+  <div class="sheetwrap hidden" id="wardWrap"><div class="sheet">
+    <div class="grab"></div>
+    <div class="lhead"><div class="ltitle">👗 Kitty 的衣櫃</div><button class="close" onclick="closeSheet('wardWrap')">✕</button></div>
+    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">點一下換上（再點一下脫掉）。灰的是還沒收集到的，去答題／開寶箱拿 🎁</p>
+    <div style="font-weight:900;font-size:13px;color:#c94f86;margin:2px 0 6px;">🎀 髮飾</div>
+    <div class="wardgrid" id="wardHair"></div>
+    <div style="font-weight:900;font-size:13px;color:#c94f86;margin:12px 0 6px;">👗 衣服 / 整套</div>
+    <div class="wardgrid" id="wardDress"></div>
+  </div></div>
+
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="data/vocab.js"></script>
+<script>
+/* ====== 收集品：髮飾 + 衣服/整套 ====== */
+const ITEMS = [
+  {id:"bow_pink",   type:"hair",  ic:"🎀", name:"粉紅蝴蝶結"},
+  {id:"clip_star",  type:"hair",  ic:"⭐", name:"星星髮夾"},
+  {id:"crown",      type:"hair",  ic:"👑", name:"小皇冠"},
+  {id:"flower",     type:"hair",  ic:"🌸", name:"櫻花髮箍"},
+  {id:"ribbon_blue",type:"hair",  ic:"🎗️", name:"藍緞帶"},
+  {id:"dress_pink", type:"dress", ic:"👗", name:"粉紅洋裝"},
+  {id:"dress_star", type:"dress", ic:"✨", name:"星光禮服"},
+  {id:"kimono",     type:"dress", ic:"👘", name:"和服(整套)"},
+  {id:"coat",       type:"dress", ic:"🧥", name:"外套(整套)"}
+];
+/* ====== 地圖佈置：朋友、道具遮蔽物、藏起來的寶箱 ====== */
+const NPCS = [
+  {id:"melody", ic:"🐰", name:"美樂蒂", x:24, y:40},
+  {id:"kuromi", ic:"😈", name:"庫洛米", x:76, y:34}
+];
+const PROPS = [ // 裝飾物（也用來「半遮住」寶箱）
+  {ic:"🌳", x:82, y:64}, {ic:"🌳", x:14, y:66}, {ic:"🌸", x:40, y:74},
+  {ic:"🌷", x:60, y:70}, {ic:"🏡", x:50, y:30}, {ic:"🌲", x:88, y:82}
+];
+const CHESTS = [ // 藏起來、不太明顯（躲在右下角的樹叢後）
+  {id:"c1", x:85, y:70},   // 藏在 🌳(82,64) 附近
+  {id:"c2", x:12, y:80}    // 藏在左下角
+];
+
+let S = load(), taskCur=null, taskNpc=null;
+function load(){ try{ const r=JSON.parse(localStorage.getItem("kittySave")); return r?migrate(r):null; }catch(e){ return null; } }
+function save(){ localStorage.setItem("kittySave", JSON.stringify(S)); }
+function migrate(s){ s=s||{};
+  if(typeof s.name!=="string") s.name="小公主";
+  if(typeof s.coins!=="number") s.coins=0;
+  if(!Array.isArray(s.wardrobe)) s.wardrobe=[];
+  if(!s.equip) s.equip={hair:null,dress:null};
+  if(!Array.isArray(s.chests)) s.chests=[];
+  return s;
+}
+function start(){
+  const n=document.getElementById("nameInput").value.trim()||"小公主";
+  if(!S) S=migrate({name:n}); else S.name=n; save();
+  words = getWords([1,2,3]);
+  document.getElementById("login").classList.add("hidden");
+  document.getElementById("game").classList.remove("hidden");
+  buildLand(); render();
+}
+let words=[];
+function render(){
+  document.getElementById("coins").textContent=S.coins;
+  document.getElementById("who").textContent=S.name+" 的樂園";
+  document.getElementById("kHair").textContent = S.equip.hair? (ITEMS.find(i=>i.id===S.equip.hair)||{}).ic||"" : "";
+  document.getElementById("kDress").textContent = S.equip.dress? (ITEMS.find(i=>i.id===S.equip.dress)||{}).ic||"" : "";
+}
+function buildLand(){
+  const land=document.getElementById("land");
+  // 清掉舊的（保留 sun 和 kitty）
+  [...land.querySelectorAll(".prop,.npc,.chest")].forEach(e=>e.remove());
+  PROPS.forEach(p=>{ const d=document.createElement("div"); d.className="prop"; d.textContent=p.ic; d.style.left=p.x+"%"; d.style.top=p.y+"%"; land.appendChild(d); });
+  CHESTS.forEach(c=>{ const d=document.createElement("div"); d.className="chest"+(S.chests.includes(c.id)?" opened":""); d.textContent="🎁"; d.style.left=c.x+"%"; d.style.top=c.y+"%";
+    d.onclick=(e)=>{ e.stopPropagation(); walkTo(c.x,c.y,()=>openChest(c)); }; land.appendChild(d); });
+  NPCS.forEach(n=>{ const d=document.createElement("div"); d.className="npc"; d.style.left=n.x+"%"; d.style.top=n.y+"%";
+    d.innerHTML=`<div class="bubble">💬</div><div class="ni">${n.ic}</div><div class="nn">${n.name}</div>`;
+    d.onclick=(e)=>{ e.stopPropagation(); walkTo(n.x,n.y+8,()=>openTask(n)); }; land.appendChild(d); });
+}
+function walkTo(x,y,then){
+  const k=document.getElementById("kitty");
+  k.style.left=x+"%"; k.style.top=y+"%";
+  if(then) setTimeout(then, 650);
+}
+function landTap(e){
+  if(e.target.closest(".npc,.chest")) return;
+  const r=document.getElementById("land").getBoundingClientRect();
+  const x=Math.max(6,Math.min(94,(e.clientX-r.left)/r.width*100));
+  const y=Math.max(20,Math.min(92,(e.clientY-r.top)/r.height*100));
+  walkTo(x,y);
+}
+
+/* ====== 朋友任務：答英文單字 → 獎勵 ====== */
+function openTask(npc){
+  taskNpc=npc; taskCur=words[Math.floor(Math.random()*words.length)];
+  document.getElementById("taskTitle").textContent=npc.ic+" "+npc.name+"的題目";
+  document.getElementById("taskZh").textContent=taskCur.zh;
+  const opts=[taskCur.en]; while(opts.length<4){ const w=words[Math.floor(Math.random()*words.length)].en; if(!opts.includes(w)) opts.push(w); }
+  shuffle(opts);
+  const box=document.getElementById("taskOpts"); box.innerHTML="";
+  opts.forEach(w=>{ const b=document.createElement("button"); b.className="opt"; b.textContent=w;
+    b.onclick=()=>{ document.querySelectorAll("#taskOpts .opt").forEach(o=>o.onclick=null);
+      if(w===taskCur.en){ b.classList.add("right"); speak(taskCur.en); rewardTask(); }
+      else{ b.classList.add("wrong"); document.querySelectorAll("#taskOpts .opt").forEach(o=>{if(o.textContent===taskCur.en)o.classList.add("right");}); toast("再試試看 💪"); setTimeout(()=>openTask(npc),1100); } };
+    box.appendChild(b); });
+  openSheet("taskWrap");
+  setTimeout(()=>speak(taskCur.en),250);
+}
+function rewardTask(){
+  // 一半機率給衣服，一半給金幣
+  const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
+  if(locked.length && Math.random()<0.5){
+    const it=locked[Math.floor(Math.random()*locked.length)];
+    S.wardrobe.push(it.id); save();
+    toast("答對了！獲得 "+it.ic+it.name+" 🎉"); setTimeout(()=>{ closeSheet("taskWrap"); openWard(); },900);
+  } else {
+    const c=6+Math.floor(Math.random()*6); S.coins+=c; save(); render();
+    toast("答對了！🪙+"+c); setTimeout(()=>closeSheet("taskWrap"),900);
+  }
+}
+
+/* ====== 藏寶箱 ====== */
+function openChest(c){
+  if(S.chests.includes(c.id)){ toast("這個寶箱已經開過囉"); return; }
+  S.chests.push(c.id);
+  const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
+  if(locked.length){ const it=locked[Math.floor(Math.random()*locked.length)]; S.wardrobe.push(it.id); save(); buildLand(); render();
+    toast("打開寶箱！獲得 "+it.ic+it.name+" ✨"); setTimeout(openWard,900); }
+  else { const c2=15+Math.floor(Math.random()*15); S.coins+=c2; save(); buildLand(); render(); toast("打開寶箱！🪙+"+c2); }
+}
+
+/* ====== 衣櫃換裝 ====== */
+function openWard(){
+  const mk=(type,grid)=>{ const g=document.getElementById(grid); g.innerHTML="";
+    ITEMS.filter(i=>i.type===type||(type==="dress"&&i.type==="set")).forEach(it=>{
+      const owned=S.wardrobe.includes(it.id), on=S.equip[type]===it.id;
+      const d=document.createElement("div"); d.className="witem"+(owned?"":" locked")+(on?" on":"");
+      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${owned?it.name:"？？？"}</div>`;
+      if(owned) d.onclick=()=>{ S.equip[type]=on?null:it.id; save(); render(); openWard(); };
+      g.appendChild(d);
+    });
+  };
+  mk("hair","wardHair"); mk("dress","wardDress");
+  openSheet("wardWrap");
+}
+
+function openSheet(id){ document.getElementById(id).classList.remove("hidden"); }
+function closeSheet(id){ document.getElementById(id).classList.add("hidden"); }
+function speak(t){ if(!t||!window.speechSynthesis) return; const u=new SpeechSynthesisUtterance(t); u.lang="en-US"; u.rate=.85; speechSynthesis.cancel(); speechSynthesis.speak(u); }
+function toast(m){ const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),1000); }
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+if(S){ document.getElementById("nameInput").value=S.name||""; }
+</script>
+</body>
+</html>
