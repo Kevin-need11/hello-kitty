@@ -79,6 +79,7 @@
   .witem .wi{font-size:34px;} .witem .wn{font-size:11px;font-weight:800;color:#a34b76;margin-top:3px;}
   .wcat{font-weight:900;font-size:13px;color:#c94f86;margin:12px 0 6px;}
   .wcat:first-child{margin-top:2px;}
+  .witem.owned{opacity:.55;} .witem .wprice{font-size:11px;font-weight:900;color:#e0568e;margin-top:2px;}
 
   .toast{position:fixed;top:32%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(90,30,60,.9);color:#fff;padding:18px 28px;border-radius:18px;font-size:22px;font-weight:900;transition:transform .18s;z-index:40;text-align:center;max-width:82%;}
   .toast.show{transform:translate(-50%,-50%) scale(1);}
@@ -100,6 +101,7 @@
     <div class="hud">
       <div class="coin">🪙 <span id="coins">0</span></div>
       <div class="who"><span id="who">Kitty 樂園</span></div>
+      <button class="wbtn" onclick="openShop()">🛒 商店</button>
       <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
     </div>
     <div class="hint">點地面讓 Kitty 走過去 · 點朋友做料理 · 每分鐘有寶箱出現、走過去找 🎁</div>
@@ -123,6 +125,14 @@
     <div class="grab"></div>
     <div class="lhead"><div class="ltitle" id="taskTitle">🐰 做料理</div><button class="close" onclick="closeSheet('taskWrap')">✕</button></div>
     <div id="craftBody"></div>
+  </div></div>
+
+  <!-- 商店：用金幣買衣服髮飾 -->
+  <div class="sheetwrap hidden" id="shopWrap"><div class="sheet">
+    <div class="grab"></div>
+    <div class="lhead"><div class="ltitle">🛒 商店（🪙 <span id="shopCoins">0</span>）</div><button class="close" onclick="closeSheet('shopWrap')">✕</button></div>
+    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">用金幣買想要的衣服髮飾（買了直接進衣櫃）。金幣去做料理／開寶箱賺 🪙</p>
+    <div id="shopBody"></div>
   </div></div>
 
   <!-- 衣櫃換裝 -->
@@ -290,6 +300,33 @@ function openChest(c){
   if(locked.length){ const it=locked[Math.floor(Math.random()*locked.length)]; S.wardrobe.push(it.id); save(); buildLand(); render();
     toast("打開寶箱！獲得 "+it.ic+it.name+" ✨"); setTimeout(openWard,900); }
   else { const c2=15+Math.floor(Math.random()*15); S.coins+=c2; save(); buildLand(); render(); toast("打開寶箱！🪙+"+c2); }
+}
+
+/* ====== 商店：用金幣買衣服髮飾 ====== */
+function itemCost(it){ return (it.type==="top"||it.type==="bottom")?30:20; }
+function openShop(){
+  document.getElementById("shopCoins").textContent=S.coins;
+  const body=document.getElementById("shopBody"); body.innerHTML="";
+  CATDEFS.forEach(cat=>{
+    const head=document.createElement("div"); head.className="wcat"; head.textContent=cat.label;
+    const g=document.createElement("div"); g.className="wardgrid";
+    ITEMS.filter(i=>i.type===cat.type).forEach(it=>{
+      const own=S.wardrobe.includes(it.id); const cost=itemCost(it);
+      const d=document.createElement("div"); d.className="witem"+(own?" owned":"");
+      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${it.name}</div><div class="wprice">${own?"✓ 已有":("🪙 "+cost)}</div>`;
+      if(!own) d.onclick=()=>buyItem(it);
+      g.appendChild(d);
+    });
+    body.appendChild(head); body.appendChild(g);
+  });
+  openSheet("shopWrap");
+}
+function buyItem(it){
+  if(S.wardrobe.includes(it.id)) return;
+  const cost=itemCost(it);
+  if(S.coins<cost){ toast("金幣不夠（需 🪙"+cost+"）去做料理賺"); return; }
+  S.coins-=cost; S.wardrobe.push(it.id); save(); render(); openShop();
+  toast("買到 "+it.ic+it.name+" 🎉");
 }
 
 /* ====== 衣櫃換裝：上衣/褲子/髮圈/髮夾 各10種 ====== */
