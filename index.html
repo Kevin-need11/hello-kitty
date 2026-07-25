@@ -77,6 +77,8 @@
   .witem.locked{opacity:.4;}
   .witem.on{border-color:#ff8fb8;background:#ffe6f0;}
   .witem .wi{font-size:34px;} .witem .wn{font-size:11px;font-weight:800;color:#a34b76;margin-top:3px;}
+  .wcat{font-weight:900;font-size:13px;color:#c94f86;margin:12px 0 6px;}
+  .wcat:first-child{margin-top:2px;}
 
   .toast{position:fixed;top:32%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(90,30,60,.9);color:#fff;padding:18px 28px;border-radius:18px;font-size:22px;font-weight:900;transition:transform .18s;z-index:40;text-align:center;max-width:82%;}
   .toast.show{transform:translate(-50%,-50%) scale(1);}
@@ -127,11 +129,8 @@
   <div class="sheetwrap hidden" id="wardWrap"><div class="sheet">
     <div class="grab"></div>
     <div class="lhead"><div class="ltitle">👗 Kitty 的衣櫃</div><button class="close" onclick="closeSheet('wardWrap')">✕</button></div>
-    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">點一下換上（再點一下脫掉）。灰的是還沒收集到的，去答題／開寶箱拿 🎁</p>
-    <div style="font-weight:900;font-size:13px;color:#c94f86;margin:2px 0 6px;">🎀 髮飾</div>
-    <div class="wardgrid" id="wardHair"></div>
-    <div style="font-weight:900;font-size:13px;color:#c94f86;margin:12px 0 6px;">👗 衣服 / 整套</div>
-    <div class="wardgrid" id="wardDress"></div>
+    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">點一下換上（再點一下脫掉）。灰的是還沒收集到的，去做料理／開寶箱拿 🎁</p>
+    <div id="wardBody"></div>
   </div></div>
 
   <div class="toast" id="toast"></div>
@@ -139,18 +138,15 @@
 
 <script src="data/vocab.js"></script>
 <script>
-/* ====== 收集品：髮飾 + 衣服/整套 ====== */
-const ITEMS = [
-  {id:"bow_pink",   type:"hair",  ic:"🎀", name:"粉紅蝴蝶結"},
-  {id:"clip_star",  type:"hair",  ic:"⭐", name:"星星髮夾"},
-  {id:"crown",      type:"hair",  ic:"👑", name:"小皇冠"},
-  {id:"flower",     type:"hair",  ic:"🌸", name:"櫻花髮箍"},
-  {id:"ribbon_blue",type:"hair",  ic:"🎗️", name:"藍緞帶"},
-  {id:"dress_pink", type:"dress", ic:"👗", name:"粉紅洋裝"},
-  {id:"dress_star", type:"dress", ic:"✨", name:"星光禮服"},
-  {id:"kimono",     type:"dress", ic:"👘", name:"和服(整套)"},
-  {id:"coat",       type:"dress", ic:"🧥", name:"外套(整套)"}
+/* ====== 收集品：上衣/褲子/髮圈/髮夾 各10種（可換裝收集） ====== */
+const CATDEFS = [
+  {type:"top",   label:"👕 上衣", list:[["👕","粉T恤"],["👚","甜心上衣"],["👔","小襯衫"],["🧥","毛呢外套"],["🎽","運動背心"],["🦺","蓬蓬上衣"],["👘","和風上衣"],["🥼","罩衫"],["🧶","針織衣"],["🌈","彩虹上衣"]]},
+  {type:"bottom",label:"👖 褲子", list:[["👖","牛仔褲"],["🩳","短褲"],["👗","傘裙"],["🩰","澎澎裙"],["🧵","吊帶褲"],["🎀","蝴蝶結裙"],["🟦","藍長褲"],["🟪","紫短裙"],["🟩","綠色褲"],["🌸","花朵裙"]]},
+  {type:"band",  label:"🎀 髮圈", list:[["🎀","蝴蝶結圈"],["⭐","星星圈"],["🌸","花朵圈"],["🍓","草莓圈"],["💛","愛心圈"],["👑","皇冠圈"],["🌈","彩虹圈"],["🩷","粉嫩圈"],["💎","鑽石圈"],["🐰","兔耳圈"]]},
+  {type:"clip",  label:"📎 髮夾", list:[["🎗️","緞帶夾"],["✨","閃亮夾"],["🌷","鬱金香夾"],["🍒","櫻桃夾"],["💧","水滴夾"],["🌙","月亮夾"],["🦋","蝴蝶夾"],["🍀","幸運夾"],["💠","寶石夾"],["🌼","雛菊夾"]]}
 ];
+const ITEMS = [];
+CATDEFS.forEach(c => c.list.forEach((it,i)=> ITEMS.push({id:c.type+(i+1), type:c.type, ic:it[0], name:it[1]})));
 /* ====== 地圖佈置：朋友、道具遮蔽物、藏起來的寶箱 ====== */
 const NPCS = [
   {id:"melody", ic:"🐰", name:"美樂蒂", x:24, y:40},
@@ -171,7 +167,13 @@ const RECIPES = [
   {ic:"🍪", en:"cookie", zh:"餅乾", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🍫",en:"chocolate",zh:"巧克力"},{ic:"🧈",en:"butter",zh:"奶油"},{ic:"🔥",en:"bake",zh:"烤"}]},
   {ic:"🧃", en:"juice",  zh:"果汁", steps:[{ic:"🍎",en:"apple",zh:"蘋果"},{ic:"🍊",en:"orange",zh:"橘子"},{ic:"🧊",en:"ice",zh:"冰塊"}]},
   {ic:"🍵", en:"tea",    zh:"茶",   steps:[{ic:"🍃",en:"tea",zh:"茶葉"},{ic:"💧",en:"water",zh:"水"},{ic:"🍯",en:"honey",zh:"蜂蜜"}]},
-  {ic:"🍦", en:"ice cream", zh:"冰淇淋", steps:[{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🧊",en:"ice",zh:"冰塊"}]}
+  {ic:"🍦", en:"ice cream", zh:"冰淇淋", steps:[{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🧊",en:"ice",zh:"冰塊"}]},
+  {ic:"🍩", en:"donut",    zh:"甜甜圈", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🍫",en:"chocolate",zh:"巧克力"},{ic:"🍬",en:"sugar",zh:"糖"}]},
+  {ic:"🍮", en:"pudding",  zh:"布丁",   steps:[{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍬",en:"sugar",zh:"糖"}]},
+  {ic:"🧁", en:"cupcake",  zh:"杯子蛋糕", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🔥",en:"bake",zh:"烤"}]},
+  {ic:"🥞", en:"pancake",  zh:"鬆餅",   steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍯",en:"honey",zh:"蜂蜜"}]},
+  {ic:"🍭", en:"lollipop", zh:"棒棒糖", steps:[{ic:"🍬",en:"sugar",zh:"糖"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🌈",en:"color",zh:"顏色"}]},
+  {ic:"🍫", en:"chocolate",zh:"巧克力", steps:[{ic:"🍫",en:"cocoa",zh:"可可"},{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍬",en:"sugar",zh:"糖"}]}
 ];
 
 let S = load(), taskCur=null, taskNpc=null;
@@ -181,7 +183,7 @@ function migrate(s){ s=s||{};
   if(typeof s.name!=="string") s.name="小公主";
   if(typeof s.coins!=="number") s.coins=0;
   if(!Array.isArray(s.wardrobe)) s.wardrobe=[];
-  if(!s.equip) s.equip={hair:null,dress:null};
+  if(!s.equip || ('hair' in s.equip)) s.equip={top:null,bottom:null,band:null,clip:null};  // 升級成4欄位
   if(!Array.isArray(s.chests)) s.chests=[];
   return s;
 }
@@ -195,11 +197,12 @@ function start(){
   if(chestTimer) clearInterval(chestTimer); chestTimer=setInterval(spawnChest, 60000);  // 每 1 分鐘出現寶箱
 }
 let words=[];
+function eqIc(t){ const id=S.equip[t]; if(!id) return ""; const it=ITEMS.find(i=>i.id===id); return it?it.ic:""; }
 function render(){
   document.getElementById("coins").textContent=S.coins;
   document.getElementById("who").textContent=S.name+" 的樂園";
-  document.getElementById("kHair").textContent = S.equip.hair? (ITEMS.find(i=>i.id===S.equip.hair)||{}).ic||"" : "";
-  document.getElementById("kDress").textContent = S.equip.dress? (ITEMS.find(i=>i.id===S.equip.dress)||{}).ic||"" : "";
+  document.getElementById("kHair").textContent = eqIc("band")+eqIc("clip");   // 髮圈+髮夾在頭上
+  document.getElementById("kDress").textContent = eqIc("top")+eqIc("bottom"); // 上衣+褲子在身上
 }
 function buildLand(){
   const land=document.getElementById("land");
@@ -289,18 +292,22 @@ function openChest(c){
   else { const c2=15+Math.floor(Math.random()*15); S.coins+=c2; save(); buildLand(); render(); toast("打開寶箱！🪙+"+c2); }
 }
 
-/* ====== 衣櫃換裝 ====== */
+/* ====== 衣櫃換裝：上衣/褲子/髮圈/髮夾 各10種 ====== */
 function openWard(){
-  const mk=(type,grid)=>{ const g=document.getElementById(grid); g.innerHTML="";
-    ITEMS.filter(i=>i.type===type||(type==="dress"&&i.type==="set")).forEach(it=>{
-      const owned=S.wardrobe.includes(it.id), on=S.equip[type]===it.id;
-      const d=document.createElement("div"); d.className="witem"+(owned?"":" locked")+(on?" on":"");
-      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${owned?it.name:"？？？"}</div>`;
-      if(owned) d.onclick=()=>{ S.equip[type]=on?null:it.id; save(); render(); openWard(); };
+  const body=document.getElementById("wardBody"); body.innerHTML="";
+  CATDEFS.forEach(cat=>{
+    const owned=ITEMS.filter(i=>i.type===cat.type&&S.wardrobe.includes(i.id)).length;
+    const head=document.createElement("div"); head.className="wcat"; head.textContent=`${cat.label}（${owned}/10）`;
+    const g=document.createElement("div"); g.className="wardgrid";
+    ITEMS.filter(i=>i.type===cat.type).forEach(it=>{
+      const own=S.wardrobe.includes(it.id), on=S.equip[cat.type]===it.id;
+      const d=document.createElement("div"); d.className="witem"+(own?"":" locked")+(on?" on":"");
+      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${own?it.name:"？？？"}</div>`;
+      if(own) d.onclick=()=>{ S.equip[cat.type]=on?null:it.id; save(); render(); openWard(); };
       g.appendChild(d);
     });
-  };
-  mk("hair","wardHair"); mk("dress","wardDress");
+    body.appendChild(head); body.appendChild(g);
+  });
   openSheet("wardWrap");
 }
 
