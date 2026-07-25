@@ -127,6 +127,7 @@
       <button class="wbtn" onclick="openPuzzle()">🧩 拼圖</button>
       <button class="wbtn" onclick="openShop()">🛒 商店</button>
       <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
+      <button class="wbtn" onclick="cloudLogin()">☁️ 存檔</button>
     </div>
     <div class="hint">點地面讓 Kitty 走過去 · 點朋友做料理 · 每分鐘有寶箱出現、走過去找 🎁</div>
 
@@ -221,8 +222,43 @@ const RECIPES = [
 ];
 
 let S = load(), taskCur=null, taskNpc=null;
+/* ===== ☁️ 雲端存檔（換手機不丟）。後端=GAS+試算表，共用三遊戲同帳號 ===== */
+var CloudSave=(function(){
+  var URL='https://script.google.com/macros/s/AKfycby4rgfkibEbhGuxgggT_Iv1wQt3dcP5J1fHvTbmeQfMLj07kSq2kt27GWAqaTBJb238Og/exec';
+  var game='',acct=null,pin=null,name=null,pushTimer=null,LS='cloudAcct';
+  function jsonp(params,cb){ var fn='cs_cb_'+Math.floor(Math.random()*1e9);
+    window[fn]=function(r){ try{cb(r);}finally{delete window[fn];s.remove();} };
+    var qs=Object.keys(params).map(function(k){return k+'='+encodeURIComponent(params[k]);}).join('&');
+    var s=document.createElement('script'); s.src=URL+'?'+qs+'&callback='+fn;
+    s.onerror=function(){ try{cb({ok:false,msg:'network'});}finally{delete window[fn];s.remove();} };
+    document.head.appendChild(s); }
+  return {
+    init:function(g){ game=g; try{ var v=JSON.parse(localStorage.getItem(LS)||'null'); if(v){acct=v.acct;pin=v.pin;name=v.name;} }catch(e){} },
+    account:function(){return acct;}, displayName:function(){return name;},
+    login:function(nm,pn,cb){ var a=String(nm||'').trim().toLowerCase();
+      jsonp({action:'login',account:a,pin:pn},function(r){ if(r.ok){acct=a;pin=String(pn);name=String(nm).trim(); localStorage.setItem(LS,JSON.stringify({acct:acct,pin:pin,name:name}));} cb(r); }); },
+    logout:function(){ acct=pin=name=null; localStorage.removeItem(LS); },
+    load:function(cb){ if(!acct){cb(null);return;} jsonp({action:'load',account:acct,pin:pin,game:game},function(r){ cb(r.ok?(r.data||''):null); }); },
+    push:function(dataStr){ if(!acct)return; clearTimeout(pushTimer); pushTimer=setTimeout(function(){ try{ fetch(URL,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain'},body:JSON.stringify({account:acct,pin:pin,game:game,data:dataStr,name:name})}); }catch(e){} },1500); }
+  };
+})();
+CloudSave.init('hellokitty');
+function cloudLogin(){
+  if(CloudSave.account()){ if(confirm("雲端帳號："+CloudSave.displayName()+"\n要登出這台的雲端連結嗎？(存檔還在雲端)")){ CloudSave.logout(); toast("已登出雲端"); } return; }
+  var nm=prompt("雲端存檔・取一個名字（換手機也用這個）："); if(!nm||!nm.trim())return; nm=nm.trim();
+  var pn=prompt("設一個密碼（換手機要用同一個，別忘了）："); if(!pn||!pn.trim())return; pn=pn.trim();
+  toast("登入中…☁️");
+  CloudSave.login(nm,pn,function(res){
+    if(!res.ok){ toast(res.msg==='wrong_pin'?"密碼不對，再試一次":"登入失敗，網路再試"); return; }
+    CloudSave.load(function(data){
+      if(data){ if(confirm("雲端有這個帳號的存檔！\n要把雲端進度下載、覆蓋這台嗎？\n（在新手機第一次請按「確定」）")){ try{ localStorage.setItem("kittySave",data); location.reload(); return; }catch(e){} } else { CloudSave.push(localStorage.getItem("kittySave")); } }
+      else { CloudSave.push(localStorage.getItem("kittySave")); }
+      toast("雲端存檔已開啟 ☁️");
+    });
+  });
+}
 function load(){ try{ const r=JSON.parse(localStorage.getItem("kittySave")); return r?migrate(r):null; }catch(e){ return null; } }
-function save(){ localStorage.setItem("kittySave", JSON.stringify(S)); }
+function save(){ localStorage.setItem("kittySave", JSON.stringify(S)); CloudSave.push(localStorage.getItem("kittySave")); }
 function migrate(s){ s=s||{};
   if(typeof s.name!=="string") s.name="小公主";
   if(typeof s.coins!=="number") s.coins=0;
