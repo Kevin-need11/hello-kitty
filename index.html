@@ -66,6 +66,10 @@
   .opt:active{transform:scale(.97);}
   .opt.right{background:#5ccf8a;border-color:#3bb56e;color:#fff;}
   .opt.wrong{background:#ff6b8a;border-color:#e6476b;color:#fff;}
+  .craftbtn{padding:10px 4px;line-height:1.2;}
+  .craftmade{min-height:70px;background:#fff5fa;border:2px dashed #ffd6e7;border-radius:16px;display:flex;align-items:center;justify-content:center;gap:8px;font-size:40px;margin:6px 0;}
+  .craftmade .mstep{font-size:36px;}
+  .cttip{text-align:center;font-size:15px;font-weight:800;color:#c94f86;margin:6px 0 10px;}
 
   /* 衣櫃 */
   .wardgrid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
@@ -96,7 +100,7 @@
       <div class="who"><span id="who">Kitty 樂園</span></div>
       <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
     </div>
-    <div class="hint">點地面讓 Kitty 走過去 · 點朋友接任務 · 找找看藏起來的寶箱 🎁</div>
+    <div class="hint">點地面讓 Kitty 走過去 · 點朋友做料理 · 每分鐘有寶箱出現、走過去找 🎁</div>
 
     <div class="land" id="land" onclick="landTap(event)">
       <div class="sun"></div>
@@ -112,14 +116,11 @@
     </div>
   </div>
 
-  <!-- 任務答題 -->
+  <!-- 做料理任務 -->
   <div class="sheetwrap hidden" id="taskWrap"><div class="sheet">
     <div class="grab"></div>
-    <div class="lhead"><div class="ltitle" id="taskTitle">🐰 美樂蒂的題目</div><button class="close" onclick="closeSheet('taskWrap')">✕</button></div>
-    <div class="ask">這個中文，英文是哪一個？答對有獎勵！</div>
-    <div class="zh" id="taskZh">蘋果</div>
-    <button class="speak" onclick="speak(taskCur.en)">🔊 唸唸看</button>
-    <div class="opts" id="taskOpts"></div>
+    <div class="lhead"><div class="ltitle" id="taskTitle">🐰 做料理</div><button class="close" onclick="closeSheet('taskWrap')">✕</button></div>
+    <div id="craftBody"></div>
   </div></div>
 
   <!-- 衣櫃換裝 -->
@@ -163,6 +164,15 @@ const CHESTS = [ // 藏起來、不太明顯（躲在右下角的樹叢後）
   {id:"c1", x:85, y:70},   // 藏在 🌳(82,64) 附近
   {id:"c2", x:12, y:80}    // 藏在左下角
 ];
+/* ====== 做料理：朋友給任務，照順序加材料做出東西（材料是英文＝順便學單字） ====== */
+const RECIPES = [
+  {ic:"🍞", en:"bread",  zh:"麵包", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🧈",en:"butter",zh:"奶油"},{ic:"🔥",en:"bake",zh:"烤"}]},
+  {ic:"🍰", en:"cake",   zh:"蛋糕", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🍶",en:"milk",zh:"牛奶"}]},
+  {ic:"🍪", en:"cookie", zh:"餅乾", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🍫",en:"chocolate",zh:"巧克力"},{ic:"🧈",en:"butter",zh:"奶油"},{ic:"🔥",en:"bake",zh:"烤"}]},
+  {ic:"🧃", en:"juice",  zh:"果汁", steps:[{ic:"🍎",en:"apple",zh:"蘋果"},{ic:"🍊",en:"orange",zh:"橘子"},{ic:"🧊",en:"ice",zh:"冰塊"}]},
+  {ic:"🍵", en:"tea",    zh:"茶",   steps:[{ic:"🍃",en:"tea",zh:"茶葉"},{ic:"💧",en:"water",zh:"水"},{ic:"🍯",en:"honey",zh:"蜂蜜"}]},
+  {ic:"🍦", en:"ice cream", zh:"冰淇淋", steps:[{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🧊",en:"ice",zh:"冰塊"}]}
+];
 
 let S = load(), taskCur=null, taskNpc=null;
 function load(){ try{ const r=JSON.parse(localStorage.getItem("kittySave")); return r?migrate(r):null; }catch(e){ return null; } }
@@ -182,6 +192,7 @@ function start(){
   document.getElementById("login").classList.add("hidden");
   document.getElementById("game").classList.remove("hidden");
   buildLand(); render();
+  if(chestTimer) clearInterval(chestTimer); chestTimer=setInterval(spawnChest, 60000);  // 每 1 分鐘出現寶箱
 }
 let words=[];
 function render(){
@@ -195,7 +206,7 @@ function buildLand(){
   // 清掉舊的（保留 sun 和 kitty）
   [...land.querySelectorAll(".prop,.npc,.chest")].forEach(e=>e.remove());
   PROPS.forEach(p=>{ const d=document.createElement("div"); d.className="prop"; d.textContent=p.ic; d.style.left=p.x+"%"; d.style.top=p.y+"%"; land.appendChild(d); });
-  CHESTS.forEach(c=>{ const d=document.createElement("div"); d.className="chest"+(S.chests.includes(c.id)?" opened":""); d.textContent="🎁"; d.style.left=c.x+"%"; d.style.top=c.y+"%";
+  liveChests.forEach(c=>{ const d=document.createElement("div"); d.className="chest"; d.textContent="🎁"; d.style.left=c.x+"%"; d.style.top=c.y+"%";
     d.onclick=(e)=>{ e.stopPropagation(); walkTo(c.x,c.y,()=>openChest(c)); }; land.appendChild(d); });
   NPCS.forEach(n=>{ const d=document.createElement("div"); d.className="npc"; d.style.left=n.x+"%"; d.style.top=n.y+"%";
     d.innerHTML=`<div class="bubble">💬</div><div class="ni">${n.ic}</div><div class="nn">${n.name}</div>`;
@@ -214,39 +225,64 @@ function landTap(e){
   walkTo(x,y);
 }
 
-/* ====== 朋友任務：答英文單字 → 獎勵 ====== */
+/* ====== 朋友任務：做料理（照順序加英文材料→做出東西）→ 獎勵 ====== */
+let craftRecipe=null, craftAdded=0;
 function openTask(npc){
-  taskNpc=npc; taskCur=words[Math.floor(Math.random()*words.length)];
-  document.getElementById("taskTitle").textContent=npc.ic+" "+npc.name+"的題目";
-  document.getElementById("taskZh").textContent=taskCur.zh;
-  const opts=[taskCur.en]; while(opts.length<4){ const w=words[Math.floor(Math.random()*words.length)].en; if(!opts.includes(w)) opts.push(w); }
-  shuffle(opts);
-  const box=document.getElementById("taskOpts"); box.innerHTML="";
-  opts.forEach(w=>{ const b=document.createElement("button"); b.className="opt"; b.textContent=w;
-    b.onclick=()=>{ document.querySelectorAll("#taskOpts .opt").forEach(o=>o.onclick=null);
-      if(w===taskCur.en){ b.classList.add("right"); speak(taskCur.en); rewardTask(); }
-      else{ b.classList.add("wrong"); document.querySelectorAll("#taskOpts .opt").forEach(o=>{if(o.textContent===taskCur.en)o.classList.add("right");}); toast("再試試看 💪"); setTimeout(()=>openTask(npc),1100); } };
-    box.appendChild(b); });
+  craftRecipe = RECIPES[Math.floor(Math.random()*RECIPES.length)]; craftAdded=0;
+  const r=craftRecipe;
+  document.getElementById("taskTitle").textContent = npc.ic+" "+npc.name+"的任務";
+  document.getElementById("craftBody").innerHTML =
+    `<div class="ask">${npc.name}想要一個 ${r.ic} <b>${r.en}</b>（${r.zh}）！<br>照順序點材料，一起做出來 →</div>
+     <div class="craftmade" id="craftMade">…</div>
+     <div class="cttip" id="ctTip"></div>
+     <div class="opts" id="craftSteps"></div>`;
+  drawCraft();
   openSheet("taskWrap");
-  setTimeout(()=>speak(taskCur.en),250);
+}
+function drawCraft(){
+  const r=craftRecipe;
+  document.getElementById("craftMade").innerHTML = craftAdded? r.steps.slice(0,craftAdded).map(s=>`<span class="mstep">${s.ic}</span>`).join("") : "…";
+  const tip=document.getElementById("ctTip");
+  tip.innerHTML = craftAdded<r.steps.length ? `下一步：加 <b>${r.steps[craftAdded].en}</b>（${r.steps[craftAdded].zh}）` : "完成！";
+  const box=document.getElementById("craftSteps"); box.innerHTML="";
+  shuffle(r.steps.slice()).forEach(s=>{
+    const b=document.createElement("button"); b.className="opt craftbtn";
+    b.innerHTML=`<div style="font-size:30px">${s.ic}</div><div style="font-size:14px">${s.en}</div><div style="font-size:11px;color:#c98ba9">${s.zh}</div>`;
+    b.onclick=()=>{ speak(s.en);
+      if(s.en===r.steps[craftAdded].en){ craftAdded++; if(craftAdded>=r.steps.length) finishCraft(); else drawCraft(); }
+      else toast("先加「"+r.steps[craftAdded].zh+"」喔"); };
+    box.appendChild(b);
+  });
+}
+function finishCraft(){
+  const r=craftRecipe;
+  document.getElementById("craftMade").innerHTML=`<span style="font-size:60px">${r.ic}</span>`;
+  document.getElementById("ctTip").innerHTML=`做好 <b>${r.en}</b>（${r.zh}）了！🎉`;
+  document.getElementById("craftSteps").innerHTML="";
+  speak(r.en); toast("做好 "+r.ic+" "+r.en+"！🎉");
+  setTimeout(rewardTask,1000);
 }
 function rewardTask(){
-  // 一半機率給衣服，一半給金幣
   const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
   if(locked.length && Math.random()<0.5){
     const it=locked[Math.floor(Math.random()*locked.length)];
     S.wardrobe.push(it.id); save();
-    toast("答對了！獲得 "+it.ic+it.name+" 🎉"); setTimeout(()=>{ closeSheet("taskWrap"); openWard(); },900);
+    toast("送你 "+it.ic+it.name+" 🎁"); setTimeout(()=>{ closeSheet("taskWrap"); openWard(); },900);
   } else {
-    const c=6+Math.floor(Math.random()*6); S.coins+=c; save(); render();
-    toast("答對了！🪙+"+c); setTimeout(()=>closeSheet("taskWrap"),900);
+    const c=8+Math.floor(Math.random()*8); S.coins+=c; save(); render();
+    toast("謝謝你！🪙+"+c); setTimeout(()=>closeSheet("taskWrap"),900);
   }
 }
 
-/* ====== 藏寶箱 ====== */
+/* ====== 藏寶箱：每 1 分鐘在樂園某處出現一個，走過去開 ====== */
+let liveChests=[], chestSeq=0, chestTimer=null;
+function spawnChest(){
+  if(liveChests.length>=3) return;   // 最多同時 3 個，別洗版
+  liveChests.push({id:"lc"+(++chestSeq), x:12+Math.floor(Math.random()*76), y:52+Math.floor(Math.random()*36)});
+  buildLand(); toast("叮咚～樂園某處出現寶箱了 ✨");
+}
 function openChest(c){
-  if(S.chests.includes(c.id)){ toast("這個寶箱已經開過囉"); return; }
-  S.chests.push(c.id);
+  liveChests = liveChests.filter(x=>x.id!==c.id);
   const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
   if(locked.length){ const it=locked[Math.floor(Math.random()*locked.length)]; S.wardrobe.push(it.id); save(); buildLand(); render();
     toast("打開寶箱！獲得 "+it.ic+it.name+" ✨"); setTimeout(openWard,900); }
