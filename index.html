@@ -42,6 +42,13 @@
   .npc .bubble{position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-size:16px;}
   .chest{position:absolute;transform:translate(-50%,-50%);font-size:34px;cursor:pointer;z-index:2;filter:drop-shadow(0 3px 3px rgba(60,60,20,.3));}
   .chest.opened{opacity:.4;}
+  .fspot{position:absolute;transform:translate(-50%,-50%);font-size:30px;cursor:pointer;z-index:2;filter:drop-shadow(0 2px 2px rgba(60,90,60,.3));animation:bob 3s ease-in-out infinite;}
+  .fspot.cd{opacity:.3;filter:grayscale(1);pointer-events:none;}
+  .ingreq{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+  .ingchip{font-size:13px;font-weight:800;border-radius:12px;padding:6px 10px;display:inline-flex;align-items:center;gap:2px;}
+  .ingchip small{font-size:10px;opacity:.7;margin-left:2px;}
+  .ingchip.ok{background:#dff5e4;color:#3bb56e;border:2px solid #9fe0b5;}
+  .ingchip.no{background:#ffe6ec;color:#e0568e;border:2px solid #ffc2d4;}
   /* Hello Kitty 玩家 */
   .kitty{position:absolute;transform:translate(-50%,-100%);z-index:5;transition:left .6s ease,top .6s ease;text-align:center;pointer-events:none;}
   .kitty .ksh{width:44px;height:10px;margin:2px auto 0;background:rgba(60,110,60,.22);border-radius:50%;filter:blur(2px);}
@@ -91,7 +98,7 @@
   .witem{border:2px solid #ffe0ec;border-radius:14px;padding:12px 4px;text-align:center;cursor:pointer;background:#fff8fb;}
   .witem.locked{opacity:.4;}
   .witem.on{border-color:#ff8fb8;background:#ffe6f0;}
-  .witem .wi{font-size:34px;} .witem .wn{font-size:11px;font-weight:800;color:#a34b76;margin-top:3px;}
+  .witem .wi{font-size:34px;height:50px;display:flex;align-items:center;justify-content:center;} .witem .wi img{max-width:48px;max-height:48px;object-fit:contain;} .witem .wn{font-size:11px;font-weight:800;color:#a34b76;margin-top:3px;}
   .wcat{font-weight:900;font-size:13px;color:#c94f86;margin:12px 0 6px;}
   .wcat:first-child{margin-top:2px;}
   .witem.owned{opacity:.55;} .witem .wprice{font-size:11px;font-weight:900;color:#e0568e;margin-top:2px;}
@@ -123,10 +130,12 @@
   <div id="game" class="hidden">
     <div class="hud">
       <div class="coin">🪙 <span id="coins">0</span></div>
+      <div class="coin">💎 <span id="diamonds">0</span></div>
       <div class="who"><span id="who">Kitty 樂園</span></div>
       <button class="wbtn" onclick="openPuzzle()">🧩 拼圖</button>
       <button class="wbtn" onclick="openShop()">🛒 商店</button>
       <button class="wbtn" onclick="openWard()">👗 衣櫃</button>
+      <button class="wbtn" onclick="openBag()">🧺 食材</button>
       <button class="wbtn" onclick="cloudLogin()">☁️ 存檔</button>
     </div>
     <div class="hint">點地面讓 Kitty 走過去 · 點朋友做料理 · 每分鐘有寶箱出現、走過去找 🎁</div>
@@ -151,7 +160,7 @@
   <!-- 商店：用金幣買衣服髮飾 -->
   <div class="sheetwrap hidden" id="shopWrap"><div class="sheet">
     <div class="grab"></div>
-    <div class="lhead"><div class="ltitle">🛒 商店（🪙 <span id="shopCoins">0</span>）</div><button class="close" onclick="closeSheet('shopWrap')">✕</button></div>
+    <div class="lhead"><div class="ltitle">🛒 商店（🪙 <span id="shopCoins">0</span> · 💎 <span id="shopDia">0</span>）</div><button class="close" onclick="closeSheet('shopWrap')">✕</button></div>
     <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px;">用金幣買想要的衣服髮飾（買了直接進衣櫃）。金幣去做料理／開寶箱賺 🪙</p>
     <div id="shopBody"></div>
   </div></div>
@@ -170,6 +179,14 @@
     <div class="grab"></div>
     <div class="lhead"><div class="ltitle">🧩 拼圖遊戲</div><button class="close" onclick="closeSheet('puzzWrap')">✕</button></div>
     <div id="puzzBody"></div>
+  </div></div>
+
+  <!-- 🧺 食材袋 -->
+  <div class="sheetwrap hidden" id="bagWrap"><div class="sheet">
+    <div class="grab"></div>
+    <div class="lhead"><div class="ltitle">🧺 食材袋</div><button class="close" onclick="closeSheet('bagWrap')">✕</button></div>
+    <p style="font-size:12px;color:#c98ba9;font-weight:700;margin-bottom:8px">在樂園地圖走到食材點（🌾🐔🐄🍓🍫…）採集，做料理時會用到。做菜會消耗、採完隔一下會補貨。</p>
+    <div id="bagBody"></div>
   </div></div>
 
   <div class="toast" id="toast"></div>
@@ -205,20 +222,52 @@ const CHESTS = [ // 藏起來、不太明顯（躲在右下角的樹叢後）
   {id:"c1", x:85, y:70},   // 藏在 🌳(82,64) 附近
   {id:"c2", x:12, y:80}    // 藏在左下角
 ];
-/* ====== 做料理：朋友給任務，照順序加材料做出東西（材料是英文＝順便學單字） ====== */
+/* ====== 食材 master（採集→食材袋→做菜消耗；每個食材＝一個英文單字） ====== */
+const INGR = {
+  flour:{ic:"🌾",en:"flour",zh:"麵粉"}, egg:{ic:"🥚",en:"egg",zh:"蛋"},
+  milk:{ic:"🥛",en:"milk",zh:"牛奶"}, butter:{ic:"🧈",en:"butter",zh:"奶油"},
+  sugar:{ic:"🍬",en:"sugar",zh:"糖"}, strawberry:{ic:"🍓",en:"strawberry",zh:"草莓"},
+  chocolate:{ic:"🍫",en:"chocolate",zh:"巧克力"}, honey:{ic:"🍯",en:"honey",zh:"蜂蜜"},
+  apple:{ic:"🍎",en:"apple",zh:"蘋果"}, orange:{ic:"🍊",en:"orange",zh:"橘子"},
+  ice:{ic:"🧊",en:"ice",zh:"冰塊"}, banana:{ic:"🍌",en:"banana",zh:"香蕉"},
+  cheese:{ic:"🧀",en:"cheese",zh:"起司"}, tomato:{ic:"🍅",en:"tomato",zh:"番茄"},
+  lettuce:{ic:"🥬",en:"lettuce",zh:"生菜"}, tea:{ic:"🍃",en:"tea",zh:"茶葉"},
+  water:{ic:"💧",en:"water",zh:"水"}
+};
+/* ====== 地圖食材採集點（走過去採→進食材袋；採完進入補貨冷卻45秒） ====== */
+const FOOD_SPOTS = [
+  {id:"s1",key:"flour",ic:"🌾",x:18,y:52},{id:"s2",key:"egg",ic:"🐔",x:72,y:50},
+  {id:"s3",key:"milk",ic:"🐄",x:30,y:88},{id:"s4",key:"strawberry",ic:"🍓",x:58,y:86},
+  {id:"s5",key:"chocolate",ic:"🍫",x:90,y:60},{id:"s6",key:"honey",ic:"🍯",x:8,y:74},
+  {id:"s7",key:"apple",ic:"🍎",x:80,y:82},{id:"s8",key:"orange",ic:"🍊",x:64,y:64},
+  {id:"s9",key:"sugar",ic:"🍬",x:44,y:56},{id:"s10",key:"ice",ic:"🧊",x:92,y:88},
+  {id:"s11",key:"banana",ic:"🍌",x:22,y:66},{id:"s12",key:"butter",ic:"🧈",x:52,y:46},
+  {id:"s13",key:"cheese",ic:"🧀",x:36,y:60},{id:"s14",key:"tomato",ic:"🍅",x:68,y:90},
+  {id:"s15",key:"lettuce",ic:"🥬",x:12,y:60},{id:"s16",key:"tea",ic:"🍃",x:84,y:72},
+  {id:"s17",key:"water",ic:"💧",x:48,y:94}
+];
+/* ====== 做料理：朋友點餐 → 要先備齊食材(從食材袋消耗) → 做出成品 ====== */
 const RECIPES = [
-  {ic:"🍞", en:"bread",  zh:"麵包", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🧈",en:"butter",zh:"奶油"},{ic:"🔥",en:"bake",zh:"烤"}]},
-  {ic:"🍰", en:"cake",   zh:"蛋糕", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🍶",en:"milk",zh:"牛奶"}]},
-  {ic:"🍪", en:"cookie", zh:"餅乾", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🍫",en:"chocolate",zh:"巧克力"},{ic:"🧈",en:"butter",zh:"奶油"},{ic:"🔥",en:"bake",zh:"烤"}]},
-  {ic:"🧃", en:"juice",  zh:"果汁", steps:[{ic:"🍎",en:"apple",zh:"蘋果"},{ic:"🍊",en:"orange",zh:"橘子"},{ic:"🧊",en:"ice",zh:"冰塊"}]},
-  {ic:"🍵", en:"tea",    zh:"茶",   steps:[{ic:"🍃",en:"tea",zh:"茶葉"},{ic:"💧",en:"water",zh:"水"},{ic:"🍯",en:"honey",zh:"蜂蜜"}]},
-  {ic:"🍦", en:"ice cream", zh:"冰淇淋", steps:[{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🧊",en:"ice",zh:"冰塊"}]},
-  {ic:"🍩", en:"donut",    zh:"甜甜圈", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🍫",en:"chocolate",zh:"巧克力"},{ic:"🍬",en:"sugar",zh:"糖"}]},
-  {ic:"🍮", en:"pudding",  zh:"布丁",   steps:[{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍬",en:"sugar",zh:"糖"}]},
-  {ic:"🧁", en:"cupcake",  zh:"杯子蛋糕", steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🔥",en:"bake",zh:"烤"}]},
-  {ic:"🥞", en:"pancake",  zh:"鬆餅",   steps:[{ic:"🌾",en:"flour",zh:"麵粉"},{ic:"🥚",en:"egg",zh:"蛋"},{ic:"🍯",en:"honey",zh:"蜂蜜"}]},
-  {ic:"🍭", en:"lollipop", zh:"棒棒糖", steps:[{ic:"🍬",en:"sugar",zh:"糖"},{ic:"🍓",en:"strawberry",zh:"草莓"},{ic:"🌈",en:"color",zh:"顏色"}]},
-  {ic:"🍫", en:"chocolate",zh:"巧克力", steps:[{ic:"🍫",en:"cocoa",zh:"可可"},{ic:"🍶",en:"milk",zh:"牛奶"},{ic:"🍬",en:"sugar",zh:"糖"}]}
+  {ic:"🍞",en:"bread",zh:"麵包",need:["flour","egg","butter"]},
+  {ic:"🍰",en:"cake",zh:"蛋糕",need:["flour","egg","strawberry","milk"]},
+  {ic:"🍪",en:"cookie",zh:"餅乾",need:["flour","chocolate","butter"]},
+  {ic:"🧃",en:"juice",zh:"果汁",need:["apple","orange","ice"]},
+  {ic:"🍵",en:"tea",zh:"茶",need:["tea","water","honey"]},
+  {ic:"🍦",en:"ice cream",zh:"冰淇淋",need:["milk","strawberry","ice"]},
+  {ic:"🍩",en:"donut",zh:"甜甜圈",need:["flour","chocolate","sugar"]},
+  {ic:"🍮",en:"pudding",zh:"布丁",need:["egg","milk","sugar"]},
+  {ic:"🧁",en:"cupcake",zh:"杯子蛋糕",need:["flour","egg","strawberry"]},
+  {ic:"🥞",en:"pancake",zh:"鬆餅",need:["flour","egg","honey"]},
+  {ic:"🍭",en:"lollipop",zh:"棒棒糖",need:["sugar","strawberry"]},
+  {ic:"🍫",en:"chocolate bar",zh:"巧克力磚",need:["chocolate","milk","sugar"]},
+  {ic:"🍕",en:"pizza",zh:"披薩",need:["flour","cheese","tomato"]},
+  {ic:"🥪",en:"sandwich",zh:"三明治",need:["cheese","tomato","lettuce"]},
+  {ic:"🥗",en:"salad",zh:"沙拉",need:["lettuce","tomato","apple"]},
+  {ic:"🍯",en:"jam",zh:"果醬",need:["strawberry","sugar","apple"]},
+  {ic:"🥤",en:"milkshake",zh:"奶昔",need:["milk","banana","ice"]},
+  {ic:"🍌",en:"banana bread",zh:"香蕉麵包",need:["flour","banana","egg"]},
+  {ic:"🧀",en:"cheesecake",zh:"起司蛋糕",need:["cheese","flour","sugar"]},
+  {ic:"🫖",en:"milk tea",zh:"奶茶",need:["tea","milk","sugar"]}
 ];
 
 let S = load(), taskCur=null, taskNpc=null;
@@ -262,6 +311,10 @@ function save(){ localStorage.setItem("kittySave", JSON.stringify(S)); CloudSave
 function migrate(s){ s=s||{};
   if(typeof s.name!=="string") s.name="小公主";
   if(typeof s.coins!=="number") s.coins=0;
+  if(typeof s.diamonds!=="number") s.diamonds=0;   // 💎 premium 幣種
+  if(typeof s.lastDaily!=="string") s.lastDaily="";   // 每日登入日期(Ⓑ)
+  if(typeof s.streak!=="number") s.streak=0;          // 連續登入天數
+  if(!s.bag || typeof s.bag!=="object") s.bag={};      // 🧺 食材袋（消耗制）
   if(!Array.isArray(s.wardrobe)) s.wardrobe=[];
   if(!s.equip || typeof s.equip!=="object") s.equip={};
   CATDEFS.forEach(c=>{ if(!(c.type in s.equip)) s.equip[c.type]=null; });   // 10 個部位欄位
@@ -275,8 +328,18 @@ function start(){
   words = getWords([1,2,3]);
   document.getElementById("login").classList.add("hidden");
   document.getElementById("game").classList.remove("hidden");
-  buildLand(); render();
+  buildLand(); render(); checkDaily();
   if(chestTimer) clearInterval(chestTimer); chestTimer=setInterval(spawnChest, 60000);  // 每 1 分鐘出現寶箱
+}
+/* Ⓑ 每日登入獎勵：每天首次進來 💎+1，連續 7 天當天再 +5 */
+function checkDaily(){
+  const today=new Date().toISOString().slice(0,10);
+  if(S.lastDaily===today) return;
+  const y=new Date(Date.now()-86400000).toISOString().slice(0,10);
+  S.streak = (S.lastDaily===y) ? (S.streak||0)+1 : 1;
+  const bonus = (S.streak%7===0)?5:0, dz=1+bonus;
+  S.lastDaily=today; S.diamonds+=dz; save(); render();
+  setTimeout(()=>toast("每日登入 💎+"+dz+(bonus?"（連續7天大獎！）":"（連續"+S.streak+"天）")),700);
 }
 let words=[];
 /* 紙娃娃：白身體+貓頭 + 各部位一層層套上（有平面PNG就用，否則emoji） */
@@ -290,20 +353,34 @@ function buildDoll(el){
 }
 function render(){
   document.getElementById("coins").textContent=S.coins;
+  document.getElementById("diamonds").textContent=S.diamonds;
   document.getElementById("who").textContent=S.name+" 的樂園";
   buildDoll(document.getElementById("kittyDoll"));
 }
 function buildLand(){
   const land=document.getElementById("land");
   // 清掉舊的（保留 sun 和 kitty）
-  [...land.querySelectorAll(".prop,.npc,.chest")].forEach(e=>e.remove());
+  [...land.querySelectorAll(".prop,.npc,.chest,.fspot")].forEach(e=>e.remove());
   PROPS.forEach(p=>{ const d=document.createElement("div"); d.className="prop"; d.textContent=p.ic; d.style.left=p.x+"%"; d.style.top=p.y+"%"; land.appendChild(d); });
   liveChests.forEach(c=>{ const d=document.createElement("div"); d.className="chest"; d.textContent="🎁"; d.style.left=c.x+"%"; d.style.top=c.y+"%";
+    if(c.gold) d.style.filter="drop-shadow(0 0 7px #ffcc00) saturate(1.4)";   // 金色寶箱微微發光
     d.onclick=(e)=>{ e.stopPropagation(); walkTo(c.x,c.y,()=>openChest(c)); }; land.appendChild(d); });
   NPCS.forEach(n=>{ const d=document.createElement("div"); d.className="npc"; d.style.left=n.x+"%"; d.style.top=n.y+"%";
     d.innerHTML=`<div class="bubble">💬</div><div class="ni">${n.ic}</div><div class="nn">${n.name}</div>`;
     d.onclick=(e)=>{ e.stopPropagation(); walkTo(n.x,n.y+8,()=>openTask(n)); }; land.appendChild(d); });
+  FOOD_SPOTS.forEach(fs=>{ const d=document.createElement("div"); d.className="fspot"+(spotOnCd.has(fs.id)?" cd":""); d.textContent=fs.ic; d.style.left=fs.x+"%"; d.style.top=fs.y+"%";
+    d.onclick=(e)=>{ e.stopPropagation(); if(spotOnCd.has(fs.id)){ toast(INGR[fs.key].ic+INGR[fs.key].zh+" 剛採過，等等再來"); return; } walkTo(fs.x,fs.y,()=>collectIngr(fs)); }; land.appendChild(d); });
 }
+/* 採集食材進食材袋；採完 45 秒補貨 */
+let spotOnCd = new Set();
+function collectIngr(fs){
+  S.bag[fs.key]=(S.bag[fs.key]||0)+1; save(); render(); speak(INGR[fs.key].en);
+  toast("採到 "+INGR[fs.key].ic+INGR[fs.key].zh+"（"+INGR[fs.key].en+"）");
+  spotOnCd.add(fs.id); buildLand();
+  setTimeout(()=>{ spotOnCd.delete(fs.id); buildLand(); }, 45000);
+}
+function bagCount(k){ return S.bag[k]||0; }
+function bagSummary(){ const ks=Object.keys(S.bag).filter(k=>S.bag[k]>0); return ks.length? ks.map(k=>INGR[k].ic+(S.bag[k]>1?("×"+S.bag[k]):"")).join("  ") : "（空的，去地圖採集食材 🧺）"; }
 function walkTo(x,y,then){
   const k=document.getElementById("kitty");
   k.style.left=x+"%"; k.style.top=y+"%";
@@ -318,43 +395,37 @@ function landTap(e){
 }
 
 /* ====== 朋友任務：做料理（照順序加英文材料→做出東西）→ 獎勵 ====== */
-let craftRecipe=null, craftAdded=0;
+let craftRecipe=null;   // taskNpc 已在上方宣告
 function openTask(npc){
-  craftRecipe = RECIPES[Math.floor(Math.random()*RECIPES.length)]; craftAdded=0;
-  const r=craftRecipe;
+  craftRecipe = RECIPES[Math.floor(Math.random()*RECIPES.length)]; taskNpc=npc;
   document.getElementById("taskTitle").textContent = npc.ic+" "+npc.name+"的任務";
-  document.getElementById("craftBody").innerHTML =
-    `<div class="ask">${npc.name}想要一個 ${r.ic} <b>${r.en}</b>（${r.zh}）！<br>照順序點材料，一起做出來 →</div>
-     <div class="craftmade" id="craftMade">…</div>
-     <div class="cttip" id="ctTip"></div>
-     <div class="opts" id="craftSteps"></div>`;
-  drawCraft();
+  drawTask();
   openSheet("taskWrap");
 }
-function drawCraft(){
+function drawTask(){
   const r=craftRecipe;
-  document.getElementById("craftMade").innerHTML = craftAdded? r.steps.slice(0,craftAdded).map(s=>`<span class="mstep">${s.ic}</span>`).join("") : "…";
-  const tip=document.getElementById("ctTip");
-  tip.innerHTML = craftAdded<r.steps.length ? `下一步：加 <b>${r.steps[craftAdded].en}</b>（${r.steps[craftAdded].zh}）` : "完成！";
-  const box=document.getElementById("craftSteps"); box.innerHTML="";
-  shuffle(r.steps.slice()).forEach(s=>{
-    const b=document.createElement("button"); b.className="opt craftbtn";
-    b.innerHTML=`<div style="font-size:30px">${s.ic}</div><div style="font-size:14px">${s.en}</div><div style="font-size:11px;color:#c98ba9">${s.zh}</div>`;
-    b.onclick=()=>{ speak(s.en);
-      if(s.en===r.steps[craftAdded].en){ craftAdded++; if(craftAdded>=r.steps.length) finishCraft(); else drawCraft(); }
-      else toast("先加「"+r.steps[craftAdded].zh+"」喔"); };
-    box.appendChild(b);
-  });
+  const haveAll = r.need.every(k=>bagCount(k)>0);
+  const chips = r.need.map(k=>{ const ok=bagCount(k)>0;
+    return `<span class="ingchip ${ok?'ok':'no'}">${INGR[k].ic} ${INGR[k].zh}<small>${INGR[k].en}</small>${ok?' ✓':' ✗'}</span>`; }).join("");
+  document.getElementById("craftBody").innerHTML =
+    `<div class="ask">${taskNpc.name}想要一個 ${r.ic} <b>${r.en}</b>（${r.zh}）！<br>需要這些食材，沒有的去地圖採集 🧺：</div>
+     <div class="ingreq">${chips}</div>
+     <button class="btn" id="makeBtn" ${haveAll?'':'disabled style="opacity:.45"'} onclick="makeDish()">${haveAll?('做出 '+r.ic+' '+r.en):'食材不足 · 先去採集'}</button>
+     <div class="cttip" style="margin-top:10px">🧺 食材袋：${bagSummary()}</div>`;
 }
-function finishCraft(){
+function makeDish(){
   const r=craftRecipe;
-  document.getElementById("craftMade").innerHTML=`<span style="font-size:60px">${r.ic}</span>`;
-  document.getElementById("ctTip").innerHTML=`做好 <b>${r.en}</b>（${r.zh}）了！🎉`;
-  document.getElementById("craftSteps").innerHTML="";
-  speak(r.en); toast("做好 "+r.ic+" "+r.en+"！🎉");
+  if(!r.need.every(k=>bagCount(k)>0)){ toast("食材還不夠"); return; }
+  r.need.forEach(k=>{ S.bag[k]-=1; if(S.bag[k]<=0) delete S.bag[k]; });   // 消耗食材
+  save(); render(); speak(r.en);
+  document.getElementById("craftBody").innerHTML =
+    `<div style="text-align:center;padding:10px"><div style="font-size:72px">${r.ic}</div>
+     <div class="ask">做好 <b>${r.en}</b>（${r.zh}）了！🎉</div></div>`;
+  toast("做好 "+r.ic+" "+r.en+"！🎉");
   setTimeout(rewardTask,1000);
 }
 function rewardTask(){
+  if(Math.random()<0.15){ S.diamonds+=1; save(); render(); toast("✨ 特別任務！角色送你 💎+1"); setTimeout(()=>closeSheet("taskWrap"),950); return; }  // Ⓓ 角色特別任務偶爾給鑽石
   const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
   if(locked.length && Math.random()<0.5){
     const it=locked[Math.floor(Math.random()*locked.length)];
@@ -370,23 +441,30 @@ function rewardTask(){
 let liveChests=[], chestSeq=0, chestTimer=null;
 function spawnChest(){
   if(liveChests.length>=5) return;   // 最多同時 5 個
-  liveChests.push({id:"lc"+(++chestSeq), x:12+Math.floor(Math.random()*76), y:52+Math.floor(Math.random()*36)});
+  liveChests.push({id:"lc"+(++chestSeq), x:12+Math.floor(Math.random()*76), y:52+Math.floor(Math.random()*36), gold:Math.random()<0.14});  // Ⓒ 約14%機率金色寶箱(開出鑽石)
   buildLand(); toast("叮咚～樂園某處出現寶箱了 ✨");
 }
 function openChest(c){
   liveChests = liveChests.filter(x=>x.id!==c.id);
+  if(c.gold){ const dz=1+Math.floor(Math.random()*2); S.diamonds+=dz; save(); buildLand(); render(); toast("✨ 金色寶箱！💎+"+dz); setTimeout(openShop,900); return; }  // Ⓒ 金色寶箱給鑽石
   const locked=ITEMS.filter(i=>!S.wardrobe.includes(i.id));
   if(locked.length){ const it=locked[Math.floor(Math.random()*locked.length)]; S.wardrobe.push(it.id); save(); buildLand(); render();
     toast("打開寶箱！獲得 "+it.ic+it.name+" ✨"); setTimeout(openWard,900); }
   else { const c2=15+Math.floor(Math.random()*15); S.coins+=c2; save(); buildLand(); render(); toast("打開寶箱！🪙+"+c2); }
 }
 
+/* 格子視覺：有平面PNG(assets/clothes/{id}.png)就顯示真圖，沒有就退回 emoji */
+function tileIC(it){ return `<img src="assets/clothes/${it.id}.png" alt="${it.ic}" onerror="this.replaceWith('${it.ic}')">`; }
 /* ====== 商店：買衣服髮飾；已擁有的可「賣回」變金幣 ====== */
 const CLOTHING=["top","coat","bottom","shoes"];
-function itemCost(it){ return CLOTHING.includes(it.type)?30:20; }
-function sellPrice(it){ return itemCost(it); }   // 賣回＝原價（買賣不虧、只是換回金幣）
+/* 💎 鑽石限定道具：只能用鑽石買（id→鑽石價）。這批＝「特別款」收集品；來源待 Kevin 定。清單可調。 */
+const GEM_PRICE = { band6:5, band9:8, clip9:5, glasses6:5, necklace5:8, necklace8:6, coat3:8, bottom4:6, shoes6:6, watch10:6, bag10:8 };
+function isGem(it){ return it.id in GEM_PRICE; }
+function itemCost(it){ return CLOTHING.includes(it.type)?300:200; }   // 金幣價
+function sellPrice(it){ return isGem(it)?GEM_PRICE[it.id]:itemCost(it); }   // 賣回＝原價（金幣道具退金幣、鑽石道具退鑽石）
 function openShop(){
   document.getElementById("shopCoins").textContent=S.coins;
+  document.getElementById("shopDia").textContent=S.diamonds;
   const body=document.getElementById("shopBody"); body.innerHTML="";
   CATDEFS.forEach(cat=>{
     const head=document.createElement("div"); head.className="wcat"; head.textContent=cat.label;
@@ -394,7 +472,7 @@ function openShop(){
     ITEMS.filter(i=>i.type===cat.type).forEach(it=>{
       const own=S.wardrobe.includes(it.id);
       const d=document.createElement("div"); d.className="witem"+(own?" owned":"");
-      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${it.name}</div><div class="wprice">${own?("賣 🪙"+sellPrice(it)):("🪙 "+itemCost(it))}</div>`;
+      d.innerHTML=`<div class="wi">${tileIC(it)}</div><div class="wn">${it.name}</div><div class="wprice">${own?("賣 "+(isGem(it)?"💎":"🪙")+sellPrice(it)):(isGem(it)?("💎 "+GEM_PRICE[it.id]):("🪙 "+itemCost(it)))}</div>`;
       d.onclick=()=> own? sellItem(it) : buyItem(it);
       g.appendChild(d);
     });
@@ -404,18 +482,27 @@ function openShop(){
 }
 function buyItem(it){
   if(S.wardrobe.includes(it.id)) return;
-  const cost=itemCost(it);
-  if(S.coins<cost){ toast("金幣不夠（需 🪙"+cost+"）去做料理賺"); return; }
-  S.coins-=cost; S.wardrobe.push(it.id); save(); render(); openShop();
+  if(isGem(it)){
+    const gc=GEM_PRICE[it.id];
+    if(S.diamonds<gc){ toast("💎 鑽石不夠（需 💎"+gc+"）"); return; }
+    S.diamonds-=gc;
+  } else {
+    const cost=itemCost(it);
+    if(S.coins<cost){ toast("金幣不夠（需 🪙"+cost+"）去做料理賺"); return; }
+    S.coins-=cost;
+  }
+  S.wardrobe.push(it.id); save(); render(); openShop();
   toast("買到 "+it.ic+it.name+" 🎉");
 }
 function sellItem(it){
   if(!S.wardrobe.includes(it.id)) return;
-  if(!confirm("要把「"+it.name+"」賣掉換 🪙"+sellPrice(it)+" 嗎？")) return;
+  const cur=isGem(it)?"💎":"🪙";
+  if(!confirm("要把「"+it.name+"」賣掉換 "+cur+sellPrice(it)+" 嗎？")) return;
   S.wardrobe=S.wardrobe.filter(x=>x!==it.id);
   if(S.equip[it.type]===it.id) S.equip[it.type]=null;   // 賣掉就脫下
-  S.coins+=sellPrice(it); save(); render(); openShop();
-  toast("賣掉 "+it.ic+it.name+"，🪙+"+sellPrice(it));
+  if(isGem(it)) S.diamonds+=sellPrice(it); else S.coins+=sellPrice(it);
+  save(); render(); openShop();
+  toast("賣掉 "+it.ic+it.name+"，"+cur+"+"+sellPrice(it));
 }
 
 /* ====== 衣櫃換裝：上衣/褲子/髮圈/髮夾 各10種 ====== */
@@ -429,7 +516,7 @@ function openWard(){
     ITEMS.filter(i=>i.type===cat.type).forEach(it=>{
       const own=S.wardrobe.includes(it.id), on=S.equip[cat.type]===it.id;
       const d=document.createElement("div"); d.className="witem"+(own?"":" locked")+(on?" on":"");
-      d.innerHTML=`<div class="wi">${it.ic}</div><div class="wn">${own?it.name:"？？？"}</div>`;
+      d.innerHTML=`<div class="wi">${own?tileIC(it):it.ic}</div><div class="wn">${own?it.name:"？？？"}</div>`;
       if(own) d.onclick=()=>{ S.equip[cat.type]=on?null:it.id; save(); render(); openWard(); };
       g.appendChild(d);
     });
@@ -438,6 +525,13 @@ function openWard(){
   openSheet("wardWrap");
 }
 
+/* ====== 🧺 食材袋檢視 ====== */
+function openBag(){
+  const body=document.getElementById("bagBody");
+  body.innerHTML = `<div class="wardgrid">`+ Object.keys(INGR).map(k=>{ const n=bagCount(k);
+    return `<div class="witem${n?'':' locked'}"><div class="wi">${INGR[k].ic}</div><div class="wn">${INGR[k].zh}<br><small style="color:#c98ba9">${INGR[k].en}</small></div><div class="wprice">×${n}</div></div>`; }).join("") +`</div>`;
+  openSheet("bagWrap");
+}
 /* ====== 拼圖小遊戲：2×2(簡單) / 3×3(中) / 4×4(難)，滑動排回 1→N ====== */
 let pz={n:3,tiles:[],empty:0};
 function openPuzzle(){
@@ -476,8 +570,10 @@ function renderPuzzle(){
     if(v!==0) b.onclick=()=>pSlide(i,false); g.appendChild(b); });
 }
 function puzzleWin(){
-  const reward=pz.n===2?10:pz.n===3?25:50; S.coins+=reward; save(); render();
-  document.getElementById("pmsg").textContent="🎉 拼好了！🪙+"+reward; toast("拼圖完成！🪙+"+reward);
+  const reward=pz.n===2?10:pz.n===3?25:50; S.coins+=reward;
+  let dmsg=""; if(pz.n===4){ S.diamonds+=1; dmsg="＋💎1"; }   // Ⓒ 4×4 困難拼圖額外給鑽石
+  save(); render();
+  document.getElementById("pmsg").textContent="🎉 拼好了！🪙+"+reward+dmsg; toast("拼圖完成！🪙+"+reward+(dmsg?"，💎+1":""));
 }
 
 function openSheet(id){ document.getElementById(id).classList.remove("hidden"); }
