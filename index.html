@@ -57,7 +57,24 @@
   .doll .dbody{position:absolute;top:56px;left:50%;transform:translateX(-50%);width:62px;height:74px;background:#fff;border:2px solid #f2cad9;border-radius:26px 26px 14px 14px;}
   .doll .dlegL,.doll .dlegR{position:absolute;top:126px;width:20px;height:50px;background:#fff;border:2px solid #f2cad9;border-radius:10px 10px 12px 12px;}
   .doll .dlegL{left:41px} .doll .dlegR{right:41px}
-  .doll .dhead{position:absolute;top:-2px;left:50%;transform:translateX(-50%);font-size:58px;line-height:1;}
+  .doll .dhead{position:absolute;top:2px;left:50%;transform:translateX(-50%);width:62px;height:54px;}
+  /* 畫出來的 Hello Kitty 娃娃臉（取代醜 emoji） */
+  .kface{position:relative;width:62px;height:54px;}
+  .kface .khd{position:absolute;left:3px;top:9px;width:56px;height:43px;background:#fff;border:2px solid #eebccd;border-radius:50% 50% 46% 46%;z-index:2;}
+  .kface .kear{position:absolute;top:3px;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-bottom:15px solid #fff;z-index:1;}
+  .kface .kear.l{left:3px;transform:rotate(-22deg);filter:drop-shadow(-1px -1px 0 #eebccd);}
+  .kface .kear.r{right:3px;transform:rotate(22deg);filter:drop-shadow(1px -1px 0 #eebccd);}
+  .kface .keye{position:absolute;top:26px;width:6px;height:9px;background:#4a3138;border-radius:50%;z-index:3;}
+  .kface .keye.l{left:18px;} .kface .keye.r{right:18px;}
+  .kface .knose{position:absolute;top:33px;left:50%;transform:translateX(-50%);width:11px;height:7px;background:#ffcf5a;border-radius:50%;z-index:3;}
+  .kface .kwk{position:absolute;height:2px;background:#e6c3d0;border-radius:2px;z-index:3;}
+  .kface .kwk.l1{left:-8px;top:31px;width:13px;} .kface .kwk.l2{left:-8px;top:37px;width:12px;transform:rotate(9deg);}
+  .kface .kwk.r1{right:-8px;top:31px;width:13px;} .kface .kwk.r2{right:-8px;top:37px;width:12px;transform:rotate(-9deg);}
+  .kface .kbow{position:absolute;top:9px;right:-2px;z-index:4;width:22px;height:14px;}
+  .kface .kbow span{position:absolute;top:0;width:0;height:0;border-top:7px solid transparent;border-bottom:7px solid transparent;}
+  .kface .kbow span.bl{left:0;border-right:11px solid #ff7fa8;}
+  .kface .kbow span.br{right:0;border-left:11px solid #ff7fa8;}
+  .kface .kbow::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:6px;height:6px;background:#ff5c8f;border-radius:50%;}
   .doll .dl{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;justify-content:center;line-height:1;}
   .doll .dl img{object-fit:contain;}
   .doll .p-head{top:-10px;font-size:24px;}
@@ -70,7 +87,7 @@
   .doll .p-feet{top:170px;font-size:22px;}
   .doll .p-wrist{top:96px;left:74%;font-size:16px;}
   .doll .p-side{top:84px;left:22%;font-size:24px;}
-  .kitty .dollmini{transform:scale(.52);transform-origin:bottom center;}
+  .kitty .dollmini{transform:scale(1.5);transform-origin:bottom center;}
 
   /* bottom sheet */
   .sheetwrap{position:absolute;inset:0;background:rgba(90,40,70,.35);display:flex;align-items:flex-end;z-index:20;}
@@ -349,7 +366,7 @@ function dollLayerHTML(cat){
 }
 function buildDoll(el){
   if(!el) return;
-  el.innerHTML = `<div class="dbody"></div><div class="dlegL"></div><div class="dlegR"></div><div class="dhead">🐱</div>` + CATDEFS.map(dollLayerHTML).join("");
+  el.innerHTML = `<div class="dbody"></div><div class="dlegL"></div><div class="dlegR"></div><div class="dhead"><div class="kface"><div class="kear l"></div><div class="kear r"></div><div class="khd"></div><div class="kbow"><span class="bl"></span><span class="br"></span></div><div class="keye l"></div><div class="keye r"></div><div class="knose"></div><div class="kwk l1"></div><div class="kwk l2"></div><div class="kwk r1"></div><div class="kwk r2"></div></div></div>` + CATDEFS.map(dollLayerHTML).join("");
 }
 function render(){
   document.getElementById("coins").textContent=S.coins;
